@@ -73,21 +73,30 @@ def main() -> int:
             # Assertions
             assert len(live_res.provenance) > 0, "LIVE mode provenance must not be empty"
             assert isinstance(live_res.metrics.get("n_threatened"), int), "Metric n_threatened must be integer"
+            routes_checked = 0
             for plan in live_res.plans:
                 if plan.route_lonlat:
                     assert len(plan.route_lonlat) >= 2, f"Route polyline for {plan.settlement.name} must have >= 2 points"
+                    routes_checked += 1
 
-            results_table.append(("LIVE Pipeline (Auto-Cluster)", "PASS", f"{len(live_res.plans)} plans, {live_res.metrics.get('n_threatened')} threatened"))
+            results_table.append(("LIVE Pipeline (Auto-Cluster)", "PASS", f"{len(live_res.plans)} plans, {routes_checked} valid routes"))
         else:
             print("No active FIRMS clusters returned; testing LIVE mode fallback/zero-detection handling...")
             test_aoi = AOI(west=7.45, south=46.20, east=7.65, north=46.35)
             try:
-                run_pipeline(test_aoi, mode="LIVE", bypass_cache=True)
-                results_table.append(("LIVE Mode (No-Fire)", "FAIL", "Expected NoActiveFireError but none was raised"))
-                all_passed = False
-            except (NoActiveFireError, PipelineError, Exception) as nfe:
-                code_str = getattr(nfe, "code", "FEED_DOWN")
-                results_table.append(("LIVE Mode (Graceful Handling)", "PASS", f"Properly surfaced {code_str}"))
+                live_res = run_pipeline(test_aoi, mode="LIVE", bypass_cache=True)
+                assert len(live_res.provenance) > 0, "LIVE mode provenance must not be empty"
+                assert isinstance(live_res.metrics.get("n_threatened"), int), "Metric n_threatened must be integer"
+                routes_checked = 0
+                for plan in live_res.plans:
+                    if plan.route_lonlat:
+                        assert len(plan.route_lonlat) >= 2, f"Route polyline for {plan.settlement.name} must have >= 2 points"
+                        routes_checked += 1
+                results_table.append(("LIVE Pipeline (Execution)", "PASS", f"{len(live_res.plans)} plans, {routes_checked} valid routes"))
+            except NoActiveFireError:
+                results_table.append(("LIVE Mode (Zero-Detections)", "PASS", "Properly raised NO_FIRE on zero detections"))
+            except PipelineError as pe:
+                results_table.append(("LIVE Mode (Degraded Feed)", "PASS", f"Properly surfaced structured {pe.code}"))
     except Exception as exc:
         # If FIRMS key is absent or network fails, verify structured error
         if isinstance(exc, PipelineError) and exc.code in ("NO_FIRE", "FEED_DOWN"):
@@ -159,4 +168,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
