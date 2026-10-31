@@ -137,7 +137,14 @@ async def pipeline_error_handler(request: Request, exc: PipelineError):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Normalize general HTTPExceptions to standardized error envelope."""
-    code = "BAD_INPUT" if exc.status_code == 422 else ("RATE_LIMITED" if exc.status_code == 429 else "INTERNAL")
+    if exc.status_code == 404:
+        code = "JOB_NOT_FOUND"
+    elif exc.status_code == 422:
+        code = "BAD_INPUT"
+    elif exc.status_code == 429:
+        code = "RATE_LIMITED"
+    else:
+        code = "INTERNAL"
     detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
@@ -271,7 +278,7 @@ def get_job_status(job_id: str) -> JobStatusResponse:
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job '{job_id}' not found or expired.",
+            detail=f"Job '{job_id}' not found or the server restarted. Please re-run the plan.",
         )
 
     return JobStatusResponse(

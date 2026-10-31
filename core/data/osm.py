@@ -257,6 +257,23 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
             url=f"{PRIMARY_OVERPASS_URL}/interpreter",
         )
 
+    # 1. Check disk cache for settlements
+    cache_dir = _get_osm_cache_dir()
+    h = _hash_key(_cache_key_for_aoi(aoi))
+    settlements_path = cache_dir / f"{h}_settlements.json"
+
+    if settlements_path.exists():
+        try:
+            cached_data = json.loads(settlements_path.read_text(encoding="utf-8"))
+            fetched_at = datetime.fromisoformat(cached_data["fetched_at_utc"])
+            age_s = (datetime.now(timezone.utc) - fetched_at).total_seconds()
+            loaded_s = [Settlement(**s) for s in cached_data.get("settlements", [])]
+            if age_s <= OSM_CACHE_TTL_S:
+                logger.info("Loaded settlements for AOI from fresh cache (%s, count %d)", h[:8], len(loaded_s))
+                return loaded_s
+        except Exception as exc:
+            logger.warning("Failed reading cached settlements %s: %s", settlements_path, exc)
+
     bbox = _format_bbox_for_osmnx(aoi)
     tags: Dict[str, Any] = {"place": ["village", "hamlet", "town", "suburb", "locality"]}
 
@@ -377,6 +394,14 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
             break
 
     logger.info("Extracted and snapped %d settlements for AOI", len(settlements))
+    try:
+        cache_data = {
+            "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
+            "settlements": [s.model_dump() for s in settlements],
+        }
+        settlements_path.write_text(json.dumps(cache_data), encoding="utf-8")
+    except Exception as exc:
+        logger.warning("Failed saving settlements cache: %s", exc)
     return settlements
 
 
@@ -399,6 +424,23 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
             source="OpenStreetMap",
             url=f"{PRIMARY_OVERPASS_URL}/interpreter",
         )
+
+    # 1. Check disk cache for shelters
+    cache_dir = _get_osm_cache_dir()
+    h = _hash_key(_cache_key_for_aoi(aoi))
+    shelters_path = cache_dir / f"{h}_shelters.json"
+
+    if shelters_path.exists():
+        try:
+            cached_data = json.loads(shelters_path.read_text(encoding="utf-8"))
+            fetched_at = datetime.fromisoformat(cached_data["fetched_at_utc"])
+            age_s = (datetime.now(timezone.utc) - fetched_at).total_seconds()
+            loaded_sh = [tuple(item) for item in cached_data.get("shelters", [])]
+            if age_s <= OSM_CACHE_TTL_S:
+                logger.info("Loaded shelters for AOI from fresh cache (%s, count %d)", h[:8], len(loaded_sh))
+                return loaded_sh
+        except Exception as exc:
+            logger.warning("Failed reading cached shelters %s: %s", shelters_path, exc)
 
     bbox = _format_bbox_for_osmnx(aoi)
     tags: Dict[str, Any] = {"amenity": ["school", "hospital", "community_centre"]}
@@ -460,5 +502,13 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
         shelters.append((name, lat, lon, kind))
 
     logger.info("Extracted %d shelters for AOI", len(shelters))
+    try:
+        cache_data = {
+            "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
+            "shelters": shelters,
+        }
+        shelters_path.write_text(json.dumps(cache_data), encoding="utf-8")
+    except Exception as exc:
+        logger.warning("Failed saving shelters cache: %s", exc)
     return shelters
 

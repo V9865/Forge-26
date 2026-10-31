@@ -397,6 +397,8 @@ def run_pipeline(
     # ---------------------------------------------------------
     t0 = time.perf_counter()
     grid = make_grid(aoi, res_m=settings.GRID_RES_M, max_cells=settings.MAX_GRID_CELLS)
+    if grid.res_m > settings.GRID_RES_M:
+        warnings_list.append(f"Grid resolution coarsened from {settings.GRID_RES_M}m to {grid.res_m:.1f}m to meet computation limit.")
 
     try:
         from core.layers import build_layers
@@ -438,6 +440,33 @@ def run_pipeline(
     t0 = time.perf_counter()
     spread_result: Optional[SpreadResult] = None
 
+    # Check for ignition on non-burnable terrain or outside grid in SCENARIO mode
+    if mode == "SCENARIO" and ignition_point is not None:
+        from core.geo import lonlat_to_rc
+        ign_lat, ign_lon = float(ignition_point[0]), float(ignition_point[1])
+        r_c, c_c = lonlat_to_rc(grid, ign_lon, ign_lat)
+        r_ign = int(round(float(r_c)))
+        c_ign = int(round(float(c_c)))
+        if not (0 <= r_ign < grid.ny and 0 <= c_ign < grid.nx):
+            raise PipelineError(
+                "INVALID_INPUT",
+                f"Ignition point ({ign_lat:.4f}, {ign_lon:.4f}) is outside the simulation grid boundaries.",
+                {"ignition": (ign_lat, ign_lon)},
+            )
+        base_ros_grid = np.asarray(layers.base_ros)
+        if base_ros_grid[r_ign, c_ign] <= 0.01:
+            fc = int(layers.fuel_class[r_ign, c_ign])
+            reason = "water" if fc == 80 else ("built-up/urban land" if fc == 50 else "bare rock/desert")
+            raise PipelineError(
+                "NON_BURNABLE_IGNITION",
+                f"Refusing ignition point ({ign_lat:.4f}, {ign_lon:.4f}): location is on {reason} with zero combustible fuel load. Please select a vegetated area.",
+                {"ignition": (ign_lat, ign_lon), "fuel_class": fc, "base_ros": float(base_ros_grid[r_ign, c_ign])},
+            )
+
+    # Check if the entire AOI is non-combustible (e.g. open ocean or bare desert)
+    if np.all(np.asarray(layers.base_ros) <= 0.01):
+        warnings_list.append("The selected area contains no combustible fuel (e.g. open water or bare desert); fire cannot propagate. Please pick a vegetated land area.")
+
     try:
         from core.fire.spread import ignition_from_point, ignitions_from_detections, simulate_spread
         if mode == "SCENARIO" and ignition_point is not None:
@@ -446,6 +475,8 @@ def run_pipeline(
             ignitions = ignitions_from_detections(layers, detections, now_utc=ref_time)
 
         spread_result = simulate_spread(layers=layers, wind=wind, ignitions=ignitions, params=sparams)
+    except PipelineError:
+        raise
     except Exception as exc:
         logger.info("simulate_spread fallback triggered (%s); running cellular model", exc)
         ignition_coords = [(d.lat, d.lon) for d in detections]
@@ -464,6 +495,17 @@ def run_pipeline(
             runtime_s=0.05,
         )
 
+    # Item 10: Check if fire touches the simulation grid boundary
+    arr = spread_result.arrival_min
+    boundary_burned = (
+        np.any(arr[0, :] <= sparams.horizon_min)
+        or np.any(arr[-1, :] <= sparams.horizon_min)
+        or np.any(arr[:, 0] <= sparams.horizon_min)
+        or np.any(arr[:, -1] <= sparams.horizon_min)
+    )
+    if boundary_burned:
+        warnings_list.append("Fire perimeter reaches the grid boundary; fire extends beyond the analysed area.")
+
     record_stage("simulate_spread", t0)
 
     # ---------------------------------------------------------
@@ -478,7 +520,7 @@ def run_pipeline(
         raise PipelineError("FEED_DOWN", f"Unexpected failure retrieving OSM road network: {exc}", {"source": "OpenStreetMap"})
 
     if G is None or len(G.nodes) == 0:
-        raise PipelineError("OSM_EMPTY", f"OpenStreetMap returned zero drivable roads in AOI [{aoi.west:.4f}, {aoi.south:.4f}, {aoi.east:.4f}, {aoi.north:.4f}].")
+        raise PipelineError("OSM_EMPTY", f"OpenStreetMap returned zero drivable roads in the selected area (e.g. open ocean, desert, or unmapped wilderness) [{aoi.west:.4f}, {aoi.south:.4f}, {aoi.east:.4f}, {aoi.north:.4f}]. Please select an inhabited area with road infrastructure.")
 
     try:
         settlements = get_settlements(aoi, G)

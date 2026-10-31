@@ -213,7 +213,17 @@ class JobManager:
 
         # GeoJSON converters
         detections_fc = build_detections_geojson(res)
-        bands_fc = build_arrival_bands_geojson(res.spread)
+        bands_fc = build_arrival_bands_geojson(res.spread, step_min=30.0)
+        # Item 17: Large GeoJSON safeguard
+        try:
+            bands_size = len(json.dumps(bands_fc).encode("utf-8"))
+            if bands_size > 5 * 1024 * 1024:
+                logger.warning("Arrival bands GeoJSON exceeded 5MB (%d bytes); coarsening step to 60 min", bands_size)
+                bands_fc = build_arrival_bands_geojson(res.spread, step_min=60.0)
+                res.warnings.append("Plan response exceeded 5MB; simplified arrival band polygons and coarsened time step to prevent payload overflow.")
+        except Exception:
+            pass
+
         settlements_fc = build_settlements_geojson(res)
         routes_fc = build_routes_geojson(res)
         naive_cut_fc = build_naive_cut_segments_geojson(res)
@@ -348,6 +358,8 @@ class JobManager:
             except (NoActiveFireError, PipelineError, FeedError) as err:
                 logger.warning("Job %s failed with expected pipeline error: %s", job_id, err)
                 code = getattr(err, "code", "INTERNAL")
+                if code == "NO_FIRE" or isinstance(err, NoActiveFireError):
+                    code = "NEEDS_SCENARIO"
                 job.status = "error"
                 job.stage = "Failed"
                 job.error = ErrorDetail(code=str(code), message=str(err))
