@@ -1,0 +1,142 @@
+/* EmberRoute — Global Styles
+ * Design tokens are defined as CSS custom properties.
+ * Tailwind CSS v4 consumes @theme to generate utilities.
+ */
+
+@import '@fontsource-variable/inter';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+@import 'tailwindcss';
+
+@theme {
+  /* ─── Colour palette ─────────────────────────────────────── */
+  --color-bg:          #0b0f14;
+  --color-panel:       #121821;
+  --color-border:      #162733;
+  --color-text:        #e6edf3;
+  --color-muted:       #8b98a9;
+  --color-fire:        #ff6a2b;
+
+  /* Status colours */
+  --color-status-evacuate:        #2ecc71;
+  --color-status-depart:          #f5a524;
+  --color-status-trapped:         #ff3b30;
+  --color-status-burning:         #8b1a1a;
+  --color-status-safe:            #657787;
+
+  /* Arrival band colours */
+  --color-band-0-2h:  #ff3b30;
+  --color-band-2-4h:  #ff8a00;
+  --color-band-4-8h:  #ffc400;
+  --color-band-8-12h: #ffe58a;
+
+  /* ─── Typography ─────────────────────────────────────────── */
+  --font-sans:  'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:  ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+
+  /* ─── Spacing / sizing ───────────────────────────────────── */
+  --spacing-header:   2.75rem;  /* 44px compact top bar */
+}
+
+/* ─── Base resets ────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #0b0f14;
+  color: #e6edf3;
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for metrics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Monospace for coordinates and timestamps */
+.font-coord {
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
+}
+
+/* MapLibre canvas fill */
+.maplibregl-canvas {
+  outline: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f14;
+}
+::-webkit-scrollbar-thumb {
+  background: #162733;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1e3448;
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid #ff6a2b;
+  outline-offset: 2px;
+}
+
+/* ─── MapLibre Dark Theme Overrides ────────────────────────── */
+.maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #121821 !important;
+  border-bottom-color: #121821 !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #8b98a9 !important;
+  padding: 2px 6px !important;
+  font-size: 14px !important;
+}
+.maplibregl-popup-close-button:hover {
+  color: #e6edf3 !important;
+  background: transparent !important;
+}
+
+.maplibregl-ctrl-group {
+  background: #121821 !important;
+  border: 1px solid #162733 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.maplibregl-ctrl-group button {
+  border-bottom: 1px solid #162733 !important;
+}
+.maplibregl-ctrl-group button:last-child {
+  border-bottom: none !important;
+}
+
+.maplibregl-ctrl-group button span {
+  filter: invert(70%) !important;
+}
+.maplibregl-ctrl-group button:hover {
+  background-color: #162733 !important;
+}
+.maplibregl-ctrl-group button:hover span {
+  filter: invert(95%) !important;
+}
+
