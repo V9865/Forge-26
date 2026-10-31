@@ -20,7 +20,6 @@ import { formatArrivalMinutes } from '@/utils/format';
 interface MapViewProps extends MapDataProps {
   visibility: MapLayerVisibility;
   timeFilterHours: number;
-  onBoundsChange?: (bounds: [number, number, number, number]) => void;
 }
 
 export function MapView({
@@ -34,6 +33,8 @@ export function MapView({
   scenarioIgnition,
   onSelectIgnition,
   isScenarioMode = false,
+  focusAoi = null,
+  onBoundsChange,
   visibility,
   timeFilterHours,
 }: MapViewProps) {
@@ -41,6 +42,11 @@ export function MapView({
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const hasSwitchedToFallbackRef = useRef(false);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  useEffect(() => {
+    onBoundsChangeRef.current = onBoundsChange;
+  }, [onBoundsChange]);
+
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
 
@@ -62,9 +68,23 @@ export function MapView({
     // Add navigation controls (zoom, compass, pitch reset)
     map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
 
+    const emitBounds = () => {
+      if (!mapRef.current || !onBoundsChangeRef.current) return;
+      const b = mapRef.current.getBounds();
+      onBoundsChangeRef.current({
+        west: Number(b.getWest().toFixed(4)),
+        south: Number(b.getSouth().toFixed(4)),
+        east: Number(b.getEast().toFixed(4)),
+        north: Number(b.getNorth().toFixed(4)),
+      });
+    };
+
     map.on('load', () => {
       setMapLoaded(true);
+      emitBounds();
     });
+
+    map.on('moveend', emitBounds);
 
     // Robust Fallback Detection:
     // If Carto dark tiles fail to load, cleanly hot-swap the raster source to OSM Standard
@@ -384,6 +404,21 @@ export function MapView({
       isScenarioMode && Boolean(scenarioIgnition),
     );
   }, [mapLoaded, visibility, isScenarioMode, scenarioIgnition]);
+
+  // ── 4b. Focus AOI ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !focusAoi) return;
+    try {
+      const b = new LngLatBounds(
+        [focusAoi.west, focusAoi.south],
+        [focusAoi.east, focusAoi.north],
+      );
+      map.fitBounds(b, { padding: 48, maxZoom: 12, duration: 800 });
+    } catch {
+      // Ignored if bounds invalid
+    }
+  }, [focusAoi, mapLoaded]);
 
   // ── 5. Auto Fit-to-Bounds helper ───────────────────────────────────────────
   const fitToFeatures = () => {
