@@ -279,11 +279,37 @@ export interface AssumptionsResponse {
   text: string;
 }
 
+export interface ValidationEvent {
+  event: string;
+  split: string;
+  grid: string;
+  future_detections: number;
+  model_recall: number;
+  baseline_recall: number;
+  predicted_area_ha: number;
+  bearing_error_deg: number;
+}
+
+export interface ValidationParameters {
+  k_wind?: number;
+  midflame?: number;
+  ros_scale?: number;
+  lb_cap?: number;
+  [key: string]: unknown;
+}
+
+export interface ValidationSummary {
+  held_out_test_recall?: number;
+  baseline_recall?: number;
+  performance_margin?: string;
+  [key: string]: unknown;
+}
+
 export interface ValidationResponse {
   available: boolean;
-  events: Record<string, unknown>[];
-  parameters: Record<string, unknown>;
-  summary: Record<string, unknown>;
+  events: ValidationEvent[];
+  parameters: ValidationParameters;
+  summary: ValidationSummary;
 }
 
 // ─── API: Errors ──────────────────────────────────────────────────────────────

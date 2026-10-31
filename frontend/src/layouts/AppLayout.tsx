@@ -17,6 +17,9 @@ import { AgentPanel } from '@/features/AgentPanel';
 import { SettlementsPanel } from '@/features/SettlementsPanel';
 import { MetricsSummary } from '@/features/MetricsSummary';
 import { EvacuationRoutesPanel } from '@/features/EvacuationRoutesPanel';
+import { BriefingPanel } from '@/features/BriefingPanel';
+import { ProvenancePanel } from '@/features/ProvenancePanel';
+import { ValidationPanel } from '@/features/ValidationPanel';
 import { useJobPoller } from '@/hooks/useJobPoller';
 import { getClusters, postPlan, ApiClientError } from '@/api/client';
 import type {
@@ -298,10 +301,10 @@ export function AppLayout() {
   // Content for the right panels (Agent & Results)
   const rightPanelsContent = (
     <>
-      <AgentPanel
-        isMonitoring={isMonitoring}
-        onToggleMonitoring={() => setIsMonitoring((v) => !v)}
-        trace={jobData?.trace}
+      <BriefingPanel
+        briefing={jobData?.result?.briefing ?? null}
+        warnings={jobData?.result?.warnings ?? []}
+        jobStatus={jobData?.status ?? null}
       />
 
       <MetricsSummary metrics={jobData?.result?.metrics ?? null} />
@@ -322,6 +325,20 @@ export function AppLayout() {
         selectedSettlementId={selectedSettlementId}
         onSelectSettlement={setSelectedSettlementId}
         jobStatus={jobData?.status ?? null}
+      />
+
+      <ProvenancePanel
+        provenance={jobData?.result?.provenance ?? null}
+        jobStatus={jobData?.status ?? null}
+      />
+
+      <ValidationPanel />
+
+      <AgentPanel
+        isMonitoring={isMonitoring}
+        onToggleMonitoring={() => setIsMonitoring((v) => !v)}
+        currentStage={jobData?.stage ?? undefined}
+        trace={jobData?.trace ?? jobData?.result?.trace ?? []}
       />
     </>
   );
