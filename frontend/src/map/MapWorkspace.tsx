@@ -26,6 +26,8 @@ export function MapWorkspace({
   scenarioIgnition,
   onSelectIgnition,
   isScenarioMode = false,
+  focusAoi = null,
+  onBoundsChange,
 }: MapWorkspaceProps) {
   const [visibility, setVisibility] = useState<MapLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
   const [timeFilterHours, setTimeFilterHours] = useState<number>(12);
@@ -59,6 +61,8 @@ export function MapWorkspace({
           scenarioIgnition={scenarioIgnition}
           onSelectIgnition={onSelectIgnition}
           isScenarioMode={isScenarioMode}
+          focusAoi={focusAoi}
+          onBoundsChange={onBoundsChange}
           visibility={visibility}
           timeFilterHours={timeFilterHours}
         />

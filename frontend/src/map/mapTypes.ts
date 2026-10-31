@@ -3,6 +3,7 @@
  */
 
 import type {
+  AOIModel,
   ArrivalBandsFeatureCollection,
   CutSegmentsFeatureCollection,
   DetectionsFeatureCollection,
@@ -38,4 +39,7 @@ export interface MapDataProps {
   scenarioIgnition?: { lat: number; lng: number } | null;
   onSelectIgnition?: (point: { lat: number; lng: number }) => void;
   isScenarioMode?: boolean;
+  // AOI focus & Viewport tracking
+  focusAoi?: AOIModel | null;
+  onBoundsChange?: (bounds: AOIModel) => void;
 }

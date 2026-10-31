@@ -19,6 +19,7 @@ import type { ConnectionStatus, JobStatus, OperatingMode } from '@/types';
 interface TopBarProps {
   operatingMode: OperatingMode;
   onModeToggle: () => void;
+  modeToggleDisabled?: boolean;
   jobStatus: JobStatus | null;
   jobStage?: string | null;
   isMonitoring: boolean;
@@ -50,6 +51,7 @@ function connectionLabel(status: ConnectionStatus): string {
 export function TopBar({
   operatingMode,
   onModeToggle,
+  modeToggleDisabled = false,
   jobStatus,
   jobStage,
   isMonitoring,
@@ -126,10 +128,21 @@ export function TopBar({
 
         {/* Mode toggle */}
         <button
-          onClick={onModeToggle}
-          className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] rounded flex-shrink-0"
-          aria-label={`Operating mode: ${operatingMode}. Click to toggle.`}
-          title="Toggle operating mode"
+          onClick={modeToggleDisabled ? undefined : onModeToggle}
+          disabled={modeToggleDisabled}
+          className={`flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] rounded flex-shrink-0 transition-opacity ${
+            modeToggleDisabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+          }`}
+          aria-label={
+            modeToggleDisabled
+              ? `Operating mode: ${operatingMode} (locked during simulation)`
+              : `Operating mode: ${operatingMode}. Click to toggle.`
+          }
+          title={
+            modeToggleDisabled
+              ? 'Mode cannot be changed while a simulation is active'
+              : 'Toggle operating mode'
+          }
         >
           <StatusBadge
             label={operatingMode}
