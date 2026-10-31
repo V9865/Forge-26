@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Malawi_Border_Fire_-38_136",
+    "aoi": {
+      "west": 34.0181,
+      "south": -9.4764,
+      "east": 34.2381,
+      "north": -9.2564
+    },
+    "t0_utc": "2026-10-25T12:00:00Z",
+    "note": "318 detections across 6 days in southern Africa"
+  },
+  {
+    "name": "Kruger_Region_Fire_-92_124",
+    "aoi": {
+      "west": 30.9828,
+      "south": -23.0591,
+      "east": 31.2028,
+      "north": -22.8391
+    },
+    "t0_utc": "2026-10-27T12:00:00Z",
+    "note": "189 detections across 5 days in Limpopo/Mozambique"
+  },
+  {
+    "name": "Tanami_Bushfire_-84_515",
+    "aoi": {
+      "west": 128.7648,
+      "south": -21.0161,
+      "east": 128.9848,
+      "north": -20.7961
+    },
+    "t0_utc": "2026-10-25T06:30:00Z",
+    "note": "352 detections across 4 days in NT/WA Australia"
+  }
+]

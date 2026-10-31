@@ -1,0 +1,7 @@
+{
+  "k_wind": 0.1,
+  "midflame": 0.3,
+  "ros_scale": 2.0,
+  "lb_cap": 8.0,
+  "horizon_min": 720
+}
