@@ -6,8 +6,11 @@ WORKDIR /app/frontend
 
 # Copy package descriptors first for Docker layer caching
 COPY frontend/package*.json ./
-# Install dependencies and build static assets; fall back to dummy dist if package.json not present
-RUN if [ -f package.json ]; then npm ci && npm run build; else mkdir -p dist; fi
+RUN npm ci
+
+# Copy full frontend source and build static distribution
+COPY frontend/ ./
+RUN npm run build
 
 # ===========================================================================
 # Stage 2: Production Python Backend Container
@@ -58,4 +61,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 # Start FastAPI application with single worker
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
-
