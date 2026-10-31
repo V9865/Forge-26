@@ -294,12 +294,19 @@ export function MapView({
     if (arrivalSource) {
       const maxMinutes = timeFilterHours * 60;
       const rawFeatures = arrivalBands?.features ?? [];
+      // Sort descending by t_min so the outermost (largest t_min) band is
+      // painted first and the innermost (smallest t_min, most urgent) band is
+      // painted last, ensuring it renders on top of wider wavefronts.
       const filteredFeatures =
         timeFilterHours > 0
-          ? rawFeatures.filter((f) => {
-              const t = f.properties?.t_min;
-              return typeof t === 'number' && t <= maxMinutes;
-            })
+          ? rawFeatures
+              .filter((f) => {
+                const t = f.properties?.t_min;
+                return typeof t === 'number' && t <= maxMinutes;
+              })
+              .sort(
+                (a, b) => (b.properties?.t_min ?? 0) - (a.properties?.t_min ?? 0),
+              )
           : [];
 
       arrivalSource.setData({
