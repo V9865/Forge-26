@@ -82,7 +82,7 @@ export function SettlementsPanel({
       )}
 
       {isDone && sorted.length > 0 && (
-        <div className="flex flex-col divide-y divide-[#162733]" role="list" aria-label="Settlement list">
+        <div className="flex flex-col divide-y divide-[#162733]" role="list" aria-label="Settlement list" aria-live="polite">
           {sorted.map((feature) => {
             const p = feature.properties;
             const meta = statusMeta(p.status);
@@ -102,7 +102,7 @@ export function SettlementsPanel({
                     onSelectSettlement(isSelected ? null : p.id);
                   }
                 }}
-                className={`p-2.5 cursor-pointer transition-colors focus:outline-none ${
+                className={`p-2.5 cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] focus-visible:ring-inset ${
                   isSelected
                     ? 'bg-[#ff6a2b]/10 border-l-2 border-[#ff6a2b]'
                     : 'hover:bg-[#0d1923] border-l-2 border-transparent'

@@ -119,7 +119,7 @@ export function BriefingPanel({ briefing, warnings = [], jobStatus }: BriefingPa
                     <span className="shrink-0 font-mono font-bold text-[10px] text-[#ff6a2b] bg-[#ff6a2b]/10 px-1 py-0.5 rounded">
                       {factId}
                     </span>
-                    <span className="text-[#8b98a9] leading-tight">{factText}</span>
+                    <span className="text-[#8b98a9] leading-tight break-words">{factText}</span>
                   </div>
                 ))}
               </div>
@@ -135,7 +135,7 @@ export function BriefingPanel({ briefing, warnings = [], jobStatus }: BriefingPa
               </div>
               <ul className="flex flex-col gap-1 text-[11px] text-[#f5a524]/90 list-disc list-inside">
                 {warnings.map((warn, i) => (
-                  <li key={i} className="leading-snug">
+                  <li key={i} className="leading-snug break-words">
                     {warn}
                   </li>
                 ))}

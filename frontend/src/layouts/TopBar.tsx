@@ -77,13 +77,15 @@ export function TopBar({
         {onToggleLeftDrawer && (
           <button
             onClick={onToggleLeftDrawer}
-            className={`lg:hidden flex items-center justify-center w-7 h-7 rounded border transition-colors ${
+            className={`lg:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
               activeDrawer === 'left'
                 ? 'border-[#ff6a2b] bg-[#ff6a2b]/20 text-[#ff6a2b]'
                 : 'border-[#162733] bg-[#121821] text-[#8b98a9] hover:text-[#e6edf3]'
             }`}
             aria-label="Toggle intelligence and simulation panel"
             title="Intelligence & Simulation"
+            aria-expanded={activeDrawer === 'left'}
+            aria-controls="mobile-left-drawer"
           >
             <span className="text-xs" aria-hidden="true">◉</span>
           </button>
@@ -176,7 +178,11 @@ export function TopBar({
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {/* Simulation status */}
         {jobStatus && jobStatus !== 'done' && jobStatus !== 'error' && (
-          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-[#f5a524]">
+          <div
+            className="flex items-center gap-1 text-[10px] sm:text-[11px] text-[#f5a524]"
+            role="status"
+            aria-live="polite"
+          >
             <span className="animate-pulse" aria-hidden="true">◉</span>
             <span className="hidden sm:inline">
               {jobStage ? `Sim: ${jobStage}` : 'Simulating…'}
@@ -210,13 +216,15 @@ export function TopBar({
         {onToggleRightDrawer && (
           <button
             onClick={onToggleRightDrawer}
-            className={`lg:hidden flex items-center justify-center w-7 h-7 rounded border transition-colors ${
+            className={`lg:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
               activeDrawer === 'right'
                 ? 'border-[#ff6a2b] bg-[#ff6a2b]/20 text-[#ff6a2b]'
                 : 'border-[#162733] bg-[#121821] text-[#8b98a9] hover:text-[#e6edf3]'
             }`}
             aria-label="Toggle agent and results panel"
             title="Agent & Results"
+            aria-expanded={activeDrawer === 'right'}
+            aria-controls="mobile-right-drawer"
           >
             <span className="text-xs" aria-hidden="true">◈</span>
           </button>

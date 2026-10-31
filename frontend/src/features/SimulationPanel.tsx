@@ -113,7 +113,7 @@ export function SimulationPanel({
                 aria-pressed={mode === m}
                 disabled={isSubmitting || isRunning || isModeLocked}
                 title={isModeLocked ? modeLockedReason : undefined}
-                className={`flex-1 py-1.5 text-[11px] font-semibold tracking-wider uppercase rounded border transition-colors ${
+                className={`flex-1 py-1.5 min-h-[38px] text-[11px] font-semibold tracking-wider uppercase rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
                   mode === m
                     ? m === 'LIVE'
                       ? 'border-[#2ecc71]/50 text-[#2ecc71] bg-[#2ecc71]/15 font-bold shadow-xs'
@@ -182,7 +182,7 @@ export function SimulationPanel({
                 <button
                   onClick={onClearIgnition}
                   disabled={isSubmitting || isRunning}
-                  className="text-[10px] text-[#8b98a9] hover:text-[#ff3b30] underline transition-colors"
+                  className="text-[10px] text-[#8b98a9] hover:text-[#ff3b30] underline transition-colors px-1 py-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b]"
                 >
                   Clear
                 </button>
@@ -232,7 +232,7 @@ export function SimulationPanel({
                 onClick={() => onResolutionChange(r)}
                 aria-pressed={resolution === r}
                 disabled={isSubmitting || isRunning}
-                className={`flex-1 py-1.5 text-[11px] font-semibold rounded border transition-colors tabular-nums ${
+                className={`flex-1 py-1.5 min-h-[36px] text-[11px] font-semibold rounded border transition-colors tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
                   resolution === r
                     ? 'border-[#ff6a2b]/50 text-[#ff6a2b] bg-[#ff6a2b]/15 shadow-xs font-bold'
                     : 'border-[#162733] text-[#8b98a9] hover:border-[#1e3448] hover:text-[#e6edf3]'
@@ -253,7 +253,7 @@ export function SimulationPanel({
                 checked={isWindOverrideEnabled}
                 onChange={(e) => onToggleWindOverride(e.target.checked)}
                 disabled={isSubmitting || isRunning}
-                className="w-3.5 h-3.5 accent-[#ff6a2b] rounded cursor-pointer"
+                className="w-4 h-4 accent-[#ff6a2b] rounded cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
               />
               <span className="text-xs font-semibold text-[#e6edf3]">Wind Override</span>
             </label>
@@ -282,7 +282,7 @@ export function SimulationPanel({
                     value={windSpeed}
                     onChange={(e) => onWindSpeedChange(Number(e.target.value))}
                     disabled={isSubmitting || isRunning}
-                    className="flex-1 accent-[#ff6a2b] cursor-pointer"
+                    className="flex-1 accent-[#ff6a2b] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded-sm"
                     aria-label="Wind speed in metres per second"
                   />
                   <input
@@ -296,7 +296,7 @@ export function SimulationPanel({
                       onWindSpeedChange(v);
                     }}
                     disabled={isSubmitting || isRunning}
-                    className="w-14 px-1.5 py-0.5 text-right font-mono text-xs bg-[#121821] border border-[#162733] rounded text-[#e6edf3]"
+                    className="w-14 px-1.5 py-0.5 text-right font-mono text-xs bg-[#121821] border border-[#162733] rounded text-[#e6edf3] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b]"
                     aria-label="Numeric wind speed"
                   />
                 </div>
@@ -319,7 +319,7 @@ export function SimulationPanel({
                     value={windDirFrom}
                     onChange={(e) => onWindDirFromChange(Number(e.target.value))}
                     disabled={isSubmitting || isRunning}
-                    className="flex-1 accent-[#ff6a2b] cursor-pointer"
+                    className="flex-1 accent-[#ff6a2b] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded-sm"
                     aria-label="Wind direction from in degrees"
                   />
                   <input
@@ -333,7 +333,7 @@ export function SimulationPanel({
                       onWindDirFromChange(v);
                     }}
                     disabled={isSubmitting || isRunning}
-                    className="w-14 px-1.5 py-0.5 text-right font-mono text-xs bg-[#121821] border border-[#162733] rounded text-[#e6edf3]"
+                    className="w-14 px-1.5 py-0.5 text-right font-mono text-xs bg-[#121821] border border-[#162733] rounded text-[#e6edf3] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b]"
                     aria-label="Numeric wind direction"
                   />
                 </div>
@@ -366,7 +366,7 @@ export function SimulationPanel({
 
         {/* ── 6. Job Execution & Live Progress ───────────────────── */}
         {isRunning && (
-          <div className="p-2.5 bg-[#121821] border border-[#ff6a2b]/30 rounded flex flex-col gap-2">
+          <div className="p-2.5 bg-[#121821] border border-[#ff6a2b]/30 rounded flex flex-col gap-2" role="status" aria-live="polite">
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-1.5 font-medium text-[#e6edf3]">
                 <span className="w-2 h-2 rounded-full bg-[#ff6a2b] animate-pulse" />
@@ -416,7 +416,7 @@ export function SimulationPanel({
           <button
             onClick={onSubmit}
             disabled={!canSubmit || isSubmitting || isRunning}
-            className={`w-full py-2.5 rounded text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
+            className={`w-full py-2.5 min-h-[44px] rounded text-xs font-bold uppercase tracking-wider transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121821] ${
               canSubmit && !isSubmitting && !isRunning
                 ? 'bg-[#ff6a2b] hover:bg-[#ff854d] text-white cursor-pointer active:scale-[0.99]'
                 : 'bg-[#162733] text-[#657787] cursor-not-allowed opacity-60'

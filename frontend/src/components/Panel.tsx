@@ -2,7 +2,7 @@
  * Panel — a floating information panel with optional header and collapse.
  */
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 interface PanelProps {
   title: string;
@@ -24,37 +24,55 @@ export function Panel({
   headerSlot,
 }: PanelProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const reactId = useId();
+  const bodyId = `panel-body-${reactId}`;
 
   return (
     <div
       className={`flex flex-col bg-[#121821] border border-[#162733] rounded overflow-hidden ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-[#162733] min-h-[36px]">
+      <div
+        className={`flex items-center gap-2 px-3 py-2 border-b border-[#162733] min-h-[38px] ${
+          collapsible ? 'cursor-pointer select-none' : ''
+        }`}
+        onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
+      >
         {icon && (
-          <span className="text-[#ff6a2b] text-sm leading-none" aria-hidden="true">
+          <span className="text-[#ff6a2b] text-sm leading-none shrink-0" aria-hidden="true">
             {icon}
           </span>
         )}
-        <span className="flex-1 text-[11px] font-semibold tracking-widest uppercase text-[#8b98a9]">
+        <span className="flex-1 text-[11px] font-semibold tracking-widest uppercase text-[#8b98a9] truncate">
           {title}
         </span>
-        {headerSlot}
+        {headerSlot && (
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
+            {headerSlot}
+          </div>
+        )}
         {collapsible && (
           <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="ml-auto text-[#8b98a9] hover:text-[#e6edf3] transition-colors w-5 h-5 flex items-center justify-center rounded"
-            aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCollapsed((c) => !c);
+            }}
+            className="ml-auto text-[#8b98a9] hover:text-[#e6edf3] transition-colors w-7 h-7 flex items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b]"
+            aria-label={collapsed ? `Expand ${title} panel` : `Collapse ${title} panel`}
             aria-expanded={!collapsed}
+            aria-controls={bodyId}
           >
-            <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+            <span aria-hidden="true" className="text-xs">{collapsed ? '▸' : '▾'}</span>
           </button>
         )}
       </div>
 
       {/* Body */}
-      {!collapsed && <div className="flex-1 overflow-auto">{children}</div>}
+      {!collapsed && (
+        <div id={bodyId} role="region" aria-label={title} className="flex-1 overflow-auto">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
-

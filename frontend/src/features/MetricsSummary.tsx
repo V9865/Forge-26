@@ -72,9 +72,9 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
               key={row.key}
               className="flex items-center justify-between px-3 py-1.5"
             >
-              <dt className="text-[11px] text-[#8b98a9]">{row.label}</dt>
+              <dt className="text-[11px] text-[#8b98a9] pr-2 truncate">{row.label}</dt>
               <dd
-                className={`text-[11px] font-mono font-semibold tabular-nums ${
+                className={`text-[11px] font-mono font-semibold tabular-nums shrink-0 ${
                   row.accentClass ?? 'text-[#e6edf3]'
                 }`}
               >

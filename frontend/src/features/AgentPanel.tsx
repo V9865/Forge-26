@@ -86,7 +86,7 @@ export function AgentPanel({
   ) : isEnabled ? (
     <button
       onClick={onDisableMonitor}
-      className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded border border-[#ff3b30]/40 text-[#ff3b30] bg-[#ff3b30]/10 hover:bg-[#ff3b30]/20 transition-colors cursor-pointer"
+      className="text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 min-h-[30px] rounded border border-[#ff3b30]/40 text-[#ff3b30] bg-[#ff3b30]/10 hover:bg-[#ff3b30]/20 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff3b30]"
       aria-label="Disable autonomous monitoring"
       title="Stop background monitoring"
     >
@@ -97,7 +97,7 @@ export function AgentPanel({
       onClick={onEnableMonitor}
       disabled={!canEnableMonitor}
       title={!canEnableMonitor ? enableDisabledReason : 'Start autonomous monitoring on selected cluster'}
-      className={`text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded border transition-colors ${
+      className={`text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 min-h-[30px] rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ecc71] ${
         canEnableMonitor
           ? 'border-[#2ecc71]/40 text-[#2ecc71] bg-[#2ecc71]/10 hover:bg-[#2ecc71]/20 cursor-pointer'
           : 'border-[#162733] text-[#657787] opacity-50 cursor-not-allowed'
@@ -242,7 +242,7 @@ export function AgentPanel({
             {traceList.length > 8 && (
               <button
                 onClick={() => setShowAllTrace((v) => !v)}
-                className="text-[10px] text-[#ff6a2b] hover:underline"
+                className="text-[10px] text-[#ff6a2b] hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] rounded px-1 min-h-[28px] inline-flex items-center"
               >
                 {showAllTrace ? 'Show recent' : `View all (${traceList.length})`}
               </button>
