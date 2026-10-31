@@ -8,7 +8,7 @@
  * - Shows an honest empty/unavailable state if /api/assumptions is blank or not found.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Panel } from '@/components/Panel';
 import { getAssumptions, getValidation, ApiClientError } from '@/api/client';
 import type { ValidationResponse } from '@/types';
@@ -17,6 +17,9 @@ type Tab = 'validation' | 'assumptions';
 
 export function ValidationPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('validation');
+
+  const validationTabRef = useRef<HTMLButtonElement | null>(null);
+  const assumptionsTabRef = useRef<HTMLButtonElement | null>(null);
 
   // Empirical validation state
   const [validationData, setValidationData] = useState<ValidationResponse | null>(null);
@@ -85,31 +88,71 @@ export function ValidationPanel() {
     Boolean(assumptionsText && assumptionsText.trim().length > 0) &&
     assumptionsText?.trim() !== 'Assumptions documentation not found.';
 
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (activeTab === 'validation') {
+        setActiveTab('assumptions');
+        assumptionsTabRef.current?.focus();
+      } else {
+        setActiveTab('validation');
+        validationTabRef.current?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (activeTab === 'assumptions') {
+        setActiveTab('validation');
+        validationTabRef.current?.focus();
+      } else {
+        setActiveTab('assumptions');
+        assumptionsTabRef.current?.focus();
+      }
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveTab('validation');
+      validationTabRef.current?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveTab('assumptions');
+      assumptionsTabRef.current?.focus();
+    }
+  };
+
   return (
     <Panel title="Model Validation & Assumptions" icon="⚖" collapsible defaultCollapsed>
       {/* Sub-tabs header */}
       <div className="flex border-b border-[#162733] bg-[#090d12]" role="tablist" aria-label="Validation sub-tabs">
         <button
+          ref={validationTabRef}
+          id="tab-validation"
           role="tab"
+          aria-selected={activeTab === 'validation'}
+          aria-controls="panel-validation"
+          tabIndex={activeTab === 'validation' ? 0 : -1}
           onClick={() => setActiveTab('validation')}
+          onKeyDown={handleTabKeyDown}
           className={`flex-1 py-2 min-h-[38px] text-[11px] font-semibold text-center border-b-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] ${
             activeTab === 'validation'
               ? 'border-[#ff6a2b] text-[#e6edf3]'
               : 'border-transparent text-[#8b98a9] hover:text-[#e6edf3]'
           }`}
-          aria-selected={activeTab === 'validation'}
         >
           Empirical Validation
         </button>
         <button
+          ref={assumptionsTabRef}
+          id="tab-assumptions"
           role="tab"
+          aria-selected={activeTab === 'assumptions'}
+          aria-controls="panel-assumptions"
+          tabIndex={activeTab === 'assumptions' ? 0 : -1}
           onClick={() => setActiveTab('assumptions')}
+          onKeyDown={handleTabKeyDown}
           className={`flex-1 py-2 min-h-[38px] text-[11px] font-semibold text-center border-b-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] ${
             activeTab === 'assumptions'
               ? 'border-[#ff6a2b] text-[#e6edf3]'
               : 'border-transparent text-[#8b98a9] hover:text-[#e6edf3]'
           }`}
-          aria-selected={activeTab === 'assumptions'}
         >
           Model Assumptions
         </button>
@@ -118,7 +161,13 @@ export function ValidationPanel() {
       <div className="p-3">
         {/* ─── TAB 1: Empirical Validation ───────────────────────────────── */}
         {activeTab === 'validation' && (
-          <div className="flex flex-col gap-3">
+          <div
+            id="panel-validation"
+            role="tabpanel"
+            aria-labelledby="tab-validation"
+            tabIndex={0}
+            className="flex flex-col gap-3"
+          >
             {/* Mandatory Historical Validation Disclaimer */}
             <div className="p-2.5 rounded bg-[#162733]/40 border border-[#162733] text-[10px] text-[#8b98a9] leading-relaxed">
               <span className="font-semibold text-[#e6edf3] block mb-0.5">
@@ -199,38 +248,41 @@ export function ValidationPanel() {
 
                 {/* Performance Comparison Events Table */}
                 {validationData.events && validationData.events.length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-[#8b98a9]">
-                      Historical Events Benchmarks ({validationData.events.length})
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-[#8b98a9]">
+                      Historical Event Benchmarks ({validationData.events.length})
                     </span>
-                    <div className="overflow-x-auto border border-[#162733] rounded">
-                      <table className="w-full text-left border-collapse text-[10px]">
+                    <div className="border border-[#162733] rounded overflow-hidden overflow-x-auto">
+                      <table className="w-full text-left text-[10px] border-collapse min-w-[500px]">
                         <thead>
-                          <tr className="border-b border-[#162733] bg-[#0d141d] text-[#657787]">
-                            <th className="p-1.5 font-semibold">Event</th>
-                            <th className="p-1.5 font-semibold">Split</th>
-                            <th className="p-1.5 font-semibold">Grid</th>
-                            <th className="p-1.5 font-semibold text-right">Detections</th>
-                            <th className="p-1.5 font-semibold text-right">Model</th>
-                            <th className="p-1.5 font-semibold text-right">Baseline</th>
-                            <th className="p-1.5 font-semibold text-right">Area (ha)</th>
-                            <th className="p-1.5 font-semibold text-right">Bearing Err</th>
+                          <tr className="bg-[#090d12] border-b border-[#162733] text-[#8b98a9]">
+                            <th className="p-1.5 font-medium">Event</th>
+                            <th className="p-1.5 font-medium">Split</th>
+                            <th className="p-1.5 font-medium">Grid</th>
+                            <th className="p-1.5 font-medium text-right">Detections</th>
+                            <th className="p-1.5 font-medium text-right">Model Recall</th>
+                            <th className="p-1.5 font-medium text-right">Baseline Recall</th>
+                            <th className="p-1.5 font-medium text-right">Area (ha)</th>
+                            <th className="p-1.5 font-medium text-right">Bearing Error</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#162733]">
+                        <tbody>
                           {validationData.events.map((ev, i) => {
-                            const isTest = ev.split === 'test';
+                            const isTest = ev.split?.toLowerCase() === 'test';
                             const modelRecallPct =
                               typeof ev.model_recall === 'number'
                                 ? `${(ev.model_recall * 100).toFixed(1)}%`
-                                : String(ev.model_recall);
+                                : String(ev.model_recall ?? '—');
                             const baselineRecallPct =
                               typeof ev.baseline_recall === 'number'
                                 ? `${(ev.baseline_recall * 100).toFixed(1)}%`
-                                : String(ev.baseline_recall);
+                                : String(ev.baseline_recall ?? '—');
 
                             return (
-                              <tr key={i} className="hover:bg-[#0d141d]/50 transition-colors">
+                              <tr
+                                key={ev.event ?? i}
+                                className="hover:bg-[#0d141d]/50 transition-colors border-b border-[#162733]/50 last:border-b-0"
+                              >
                                 <td className="p-1.5 font-medium text-[#e6edf3] truncate max-w-[120px]" title={ev.event}>
                                   {ev.event}
                                 </td>
@@ -250,7 +302,9 @@ export function ValidationPanel() {
                                 <td className="p-1.5 text-right font-mono font-semibold text-[#2ecc71]">{modelRecallPct}</td>
                                 <td className="p-1.5 text-right font-mono text-[#8b98a9]">{baselineRecallPct}</td>
                                 <td className="p-1.5 text-right font-mono text-[#e6edf3]">{ev.predicted_area_ha}</td>
-                                <td className="p-1.5 text-right font-mono text-[#e6edf3]">{ev.bearing_error_deg}°</td>
+                                <td className="p-1.5 text-right font-mono text-[#e6edf3]">
+                                  {typeof ev.bearing_error_deg === 'number' ? `${ev.bearing_error_deg}°` : (ev.bearing_error_deg ?? '—')}
+                                </td>
                               </tr>
                             );
                           })}
@@ -266,7 +320,13 @@ export function ValidationPanel() {
 
         {/* ─── TAB 2: Model Assumptions ──────────────────────────────────── */}
         {activeTab === 'assumptions' && (
-          <div className="flex flex-col gap-2">
+          <div
+            id="panel-assumptions"
+            role="tabpanel"
+            aria-labelledby="tab-assumptions"
+            tabIndex={0}
+            className="flex flex-col gap-2"
+          >
             {isAssumptionsLoading && (
               <div className="flex items-center gap-2 text-xs text-[#8b98a9] py-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#ff6a2b] animate-pulse" aria-hidden="true" />
@@ -304,4 +364,3 @@ export function ValidationPanel() {
     </Panel>
   );
 }
-

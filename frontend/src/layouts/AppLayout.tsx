@@ -364,6 +364,10 @@ export function AppLayout() {
   }, []);
 
   const drawerTriggerRef = useRef<HTMLElement | null>(null);
+  const leftDrawerRef = useRef<HTMLElement | null>(null);
+  const rightDrawerRef = useRef<HTMLElement | null>(null);
+  const leftDrawerCloseBtnRef = useRef<HTMLButtonElement | null>(null);
+  const rightDrawerCloseBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const toggleLeftDrawer = () => {
     setActiveDrawer((current) => {
@@ -392,14 +396,61 @@ export function AppLayout() {
     setTimeout(() => drawerTriggerRef.current?.focus(), 0);
   };
 
-  // Close drawers on Escape key press
+  // Initial focus management for mobile drawers
+  useEffect(() => {
+    if (activeDrawer === 'left') {
+      const timer = setTimeout(() => {
+        leftDrawerCloseBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    } else if (activeDrawer === 'right') {
+      const timer = setTimeout(() => {
+        rightDrawerCloseBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeDrawer]);
+
+  // Focus containment (trap) and Escape key handling for mobile drawers
   useEffect(() => {
     if (activeDrawer === null) return;
+
+    const container = activeDrawer === 'left' ? leftDrawerRef.current : rightDrawerRef.current;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
         closeDrawers();
+        return;
+      }
+
+      if (e.key === 'Tab' && container) {
+        const focusableElements = container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const focusables = Array.from(focusableElements).filter(
+          (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+        );
+
+        if (focusables.length === 0) return;
+
+        const firstElement = focusables[0];
+        const lastElement = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeDrawer]);
@@ -602,6 +653,7 @@ export function AppLayout() {
 
         {/* ── Mobile/Tablet Left Drawer (< 1024px) ──────────────── */}
         <aside
+          ref={leftDrawerRef}
           id="mobile-left-drawer"
           role="dialog"
           aria-modal="true"
@@ -616,6 +668,7 @@ export function AppLayout() {
               Intel & Simulation
             </span>
             <button
+              ref={leftDrawerCloseBtnRef}
               onClick={closeDrawers}
               className="text-[#8b98a9] hover:text-[#e6edf3] text-sm w-8 h-8 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
               aria-label="Close drawer"
@@ -630,6 +683,7 @@ export function AppLayout() {
 
         {/* ── Mobile/Tablet Right Drawer (< 1024px) ─────────────── */}
         <aside
+          ref={rightDrawerRef}
           id="mobile-right-drawer"
           role="dialog"
           aria-modal="true"
@@ -644,6 +698,7 @@ export function AppLayout() {
               Agent & Routes
             </span>
             <button
+              ref={rightDrawerCloseBtnRef}
               onClick={closeDrawers}
               className="text-[#8b98a9] hover:text-[#e6edf3] text-sm w-8 h-8 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
               aria-label="Close drawer"
