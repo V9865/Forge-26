@@ -47,7 +47,7 @@ export function FireIntelligencePanel({
             onRefresh();
           }}
           disabled={isLoading}
-          className="text-[10px] text-[#8b98a9] hover:text-[#e6edf3] p-1 rounded hover:bg-[#162733] transition-colors disabled:opacity-50"
+          className="text-[10px] text-[#8b98a9] hover:text-[#e6edf3] p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-[#162733] transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
           title="Refresh active fire clusters from NASA FIRMS"
           aria-label="Refresh fire clusters"
         >
@@ -156,7 +156,7 @@ export function FireIntelligencePanel({
                   role="radio"
                   aria-checked={isSelected}
                   title={isLocked ? lockReason || 'Cluster selection locked while monitoring is active.' : undefined}
-                  className={`w-full text-left p-2.5 rounded border transition-all text-xs flex flex-col gap-1.5 ${
+                  className={`w-full text-left p-2.5 rounded border transition-all text-xs flex flex-col gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] min-h-[44px] ${
                     isSelected
                       ? 'border-[#ff6a2b] bg-[#ff6a2b]/10 shadow-sm'
                       : isLocked

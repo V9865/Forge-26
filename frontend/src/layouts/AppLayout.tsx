@@ -363,17 +363,46 @@ export function AppLayout() {
     setViewportBounds(bounds);
   }, []);
 
+  const drawerTriggerRef = useRef<HTMLElement | null>(null);
+
   const toggleLeftDrawer = () => {
-    setActiveDrawer((current) => (current === 'left' ? null : 'left'));
+    setActiveDrawer((current) => {
+      if (current === 'left') {
+        setTimeout(() => drawerTriggerRef.current?.focus(), 0);
+        return null;
+      }
+      drawerTriggerRef.current = document.activeElement as HTMLElement | null;
+      return 'left';
+    });
   };
 
   const toggleRightDrawer = () => {
-    setActiveDrawer((current) => (current === 'right' ? null : 'right'));
+    setActiveDrawer((current) => {
+      if (current === 'right') {
+        setTimeout(() => drawerTriggerRef.current?.focus(), 0);
+        return null;
+      }
+      drawerTriggerRef.current = document.activeElement as HTMLElement | null;
+      return 'right';
+    });
   };
 
   const closeDrawers = () => {
     setActiveDrawer(null);
+    setTimeout(() => drawerTriggerRef.current?.focus(), 0);
   };
+
+  // Close drawers on Escape key press
+  useEffect(() => {
+    if (activeDrawer === null) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeDrawers();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeDrawer]);
 
   // Content for the left panels (Intelligence & Simulation)
   const leftPanelsContent = (
@@ -526,7 +555,7 @@ export function AppLayout() {
           >
             <button
               onClick={toggleLeftDrawer}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
                 activeDrawer === 'left'
                   ? 'bg-[#ff6a2b] text-white shadow'
                   : 'text-[#8b98a9] hover:text-[#e6edf3]'
@@ -540,7 +569,7 @@ export function AppLayout() {
             <div className="w-px h-4 bg-[#162733]" aria-hidden="true" />
             <button
               onClick={toggleRightDrawer}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
                 activeDrawer === 'right'
                   ? 'bg-[#ff6a2b] text-white shadow'
                   : 'text-[#8b98a9] hover:text-[#e6edf3]'
@@ -565,7 +594,7 @@ export function AppLayout() {
         {/* ── Mobile/Tablet Backdrop (< 1024px) ─────────────────── */}
         {activeDrawer !== null && (
           <div
-            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-30 transition-opacity"
+            className="lg:hidden fixed inset-0 bg-black/70 backdrop-blur-xs z-30 transition-opacity cursor-pointer"
             onClick={closeDrawers}
             aria-hidden="true"
           />
@@ -574,18 +603,21 @@ export function AppLayout() {
         {/* ── Mobile/Tablet Left Drawer (< 1024px) ──────────────── */}
         <aside
           id="mobile-left-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-left-drawer-title"
           className={`lg:hidden fixed inset-y-0 left-0 z-40 w-72 sm:w-80 max-w-[85vw] bg-[#0b0f14] border-r border-[#162733] shadow-2xl flex flex-col transition-transform duration-200 ease-out ${
             activeDrawer === 'left' ? 'translate-x-0' : '-translate-x-full'
           }`}
           aria-label="Mobile fire intelligence and simulation drawer"
         >
           <div className="flex items-center justify-between p-3 border-b border-[#162733]">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#e6edf3]">
+            <span id="mobile-left-drawer-title" className="text-xs font-bold uppercase tracking-wider text-[#e6edf3]">
               Intel & Simulation
             </span>
             <button
               onClick={closeDrawers}
-              className="text-[#8b98a9] hover:text-[#e6edf3] text-sm p-1"
+              className="text-[#8b98a9] hover:text-[#e6edf3] text-sm w-8 h-8 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
               aria-label="Close drawer"
             >
               ✕
@@ -599,18 +631,21 @@ export function AppLayout() {
         {/* ── Mobile/Tablet Right Drawer (< 1024px) ─────────────── */}
         <aside
           id="mobile-right-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-right-drawer-title"
           className={`lg:hidden fixed inset-y-0 right-0 z-40 w-72 sm:w-80 max-w-[85vw] bg-[#0b0f14] border-l border-[#162733] shadow-2xl flex flex-col transition-transform duration-200 ease-out ${
             activeDrawer === 'right' ? 'translate-x-0' : 'translate-x-full'
           }`}
           aria-label="Mobile agent and evacuation routes drawer"
         >
           <div className="flex items-center justify-between p-3 border-b border-[#162733]">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#e6edf3]">
+            <span id="mobile-right-drawer-title" className="text-xs font-bold uppercase tracking-wider text-[#e6edf3]">
               Agent & Routes
             </span>
             <button
               onClick={closeDrawers}
-              className="text-[#8b98a9] hover:text-[#e6edf3] text-sm p-1"
+              className="text-[#8b98a9] hover:text-[#e6edf3] text-sm w-8 h-8 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
               aria-label="Close drawer"
             >
               ✕

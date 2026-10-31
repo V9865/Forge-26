@@ -88,10 +88,11 @@ export function ValidationPanel() {
   return (
     <Panel title="Model Validation & Assumptions" icon="⚖" collapsible defaultCollapsed>
       {/* Sub-tabs header */}
-      <div className="flex border-b border-[#162733] bg-[#090d12]">
+      <div className="flex border-b border-[#162733] bg-[#090d12]" role="tablist" aria-label="Validation sub-tabs">
         <button
+          role="tab"
           onClick={() => setActiveTab('validation')}
-          className={`flex-1 py-1.5 text-[11px] font-semibold text-center border-b-2 transition-colors ${
+          className={`flex-1 py-2 min-h-[38px] text-[11px] font-semibold text-center border-b-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] ${
             activeTab === 'validation'
               ? 'border-[#ff6a2b] text-[#e6edf3]'
               : 'border-transparent text-[#8b98a9] hover:text-[#e6edf3]'
@@ -101,8 +102,9 @@ export function ValidationPanel() {
           Empirical Validation
         </button>
         <button
+          role="tab"
           onClick={() => setActiveTab('assumptions')}
-          className={`flex-1 py-1.5 text-[11px] font-semibold text-center border-b-2 transition-colors ${
+          className={`flex-1 py-2 min-h-[38px] text-[11px] font-semibold text-center border-b-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#ff6a2b] ${
             activeTab === 'assumptions'
               ? 'border-[#ff6a2b] text-[#e6edf3]'
               : 'border-transparent text-[#8b98a9] hover:text-[#e6edf3]'
