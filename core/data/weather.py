@@ -320,3 +320,4 @@ def fetch_wind_history(
         is_stale=prov.is_stale,
     )
     return series, prov
+

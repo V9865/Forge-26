@@ -78,3 +78,4 @@ def test_apply_override() -> None:
     # Original untouched
     assert series.is_override is False
     assert series.speed_ms == [4.0, 5.0, 6.0]
+

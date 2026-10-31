@@ -118,3 +118,4 @@ def test_cached_or_fetch_success_flow() -> None:
     cached_data, cached_record = cache.cached_or_fetch(key, ttl_s=60, fetch_fn=should_not_run)
     assert cached_data == fresh_payload
     assert cached_record.is_stale is False
+

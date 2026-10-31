@@ -216,3 +216,4 @@ def bearing_deg(dr: Union[float, int], dc: Union[float, int]) -> float:
     # x is eastward (dc), y is northward (-dr)
     angle = math.degrees(math.atan2(float(dc), -float(dr)))
     return (angle + 360.0) % 360.0
+

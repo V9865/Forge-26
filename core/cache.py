@@ -213,3 +213,4 @@ def cached_or_fetch(
 
         # No stale cache available or allow_stale=False -> re-raise
         raise err
+

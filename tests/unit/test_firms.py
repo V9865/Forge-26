@@ -76,3 +76,4 @@ def test_deduplicate_detections() -> None:
     assert 45.0 in frps
     assert 20.0 in frps
     assert 15.0 not in frps
+

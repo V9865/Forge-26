@@ -351,3 +351,4 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
     # Sort descending by total FRP and return top_n
     cluster_results.sort(key=lambda c: c["total_frp"], reverse=True)
     return cluster_results[:top_n]
+

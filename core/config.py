@@ -96,3 +96,4 @@ def get_settings() -> Settings:
         MAX_GRID_CELLS=int(os.getenv("MAX_GRID_CELLS", "400")),
         HORIZON_MIN=int(os.getenv("HORIZON_MIN", "720")),
     )
+

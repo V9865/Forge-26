@@ -39,3 +39,4 @@ def test_live_firms_detections() -> None:
         assert -120.2 <= d.lon <= -120.0
         assert 38.1 <= d.lat <= 38.3
     assert prov.source == "NASA FIRMS"
+

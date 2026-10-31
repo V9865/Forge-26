@@ -216,3 +216,4 @@ class PipelineResult(BaseModel):
     provenance: List[ProvenanceRecord] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     trace: List[Dict[str, Any]] = Field(default_factory=list)
+

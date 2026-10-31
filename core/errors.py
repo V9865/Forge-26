@@ -25,3 +25,4 @@ class StaleCacheWarning(UserWarning):
     """Warning emitted when serving expired cache data on feed failure."""
 
     pass
+
