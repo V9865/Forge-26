@@ -19,6 +19,8 @@ interface FireIntelligencePanelProps {
   onRefresh: () => void;
   feedStatus?: 'OK' | 'STALE' | 'DOWN';
   detectionCount?: number;
+  isLocked?: boolean;
+  lockReason?: string;
 }
 
 export function FireIntelligencePanel({
@@ -30,6 +32,8 @@ export function FireIntelligencePanel({
   onRefresh,
   feedStatus,
   detectionCount,
+  isLocked = false,
+  lockReason,
 }: FireIntelligencePanelProps) {
   return (
     <Panel
@@ -79,6 +83,14 @@ export function FireIntelligencePanel({
             <span className="text-sm font-bold font-mono text-[#ff6a2b]">
               {detectionCount.toLocaleString()}
             </span>
+          </div>
+        )}
+
+        {/* Lock status banner when monitoring is active */}
+        {isLocked && (
+          <div className="px-3 py-1.5 bg-[#f5a524]/10 border-b border-[#f5a524]/20 text-[10px] text-[#f5a524] flex items-center gap-1.5">
+            <span aria-hidden="true">🔒</span>
+            <span>{lockReason || 'Cluster selection locked while monitoring is active.'}</span>
           </div>
         )}
 
@@ -136,12 +148,19 @@ export function FireIntelligencePanel({
               return (
                 <button
                   key={c.id}
-                  onClick={() => onSelectCluster(isSelected ? null : c)}
+                  onClick={() => {
+                    if (isLocked) return;
+                    onSelectCluster(isSelected ? null : c);
+                  }}
+                  disabled={isLocked}
                   role="radio"
                   aria-checked={isSelected}
+                  title={isLocked ? lockReason || 'Cluster selection locked while monitoring is active.' : undefined}
                   className={`w-full text-left p-2.5 rounded border transition-all text-xs flex flex-col gap-1.5 ${
                     isSelected
                       ? 'border-[#ff6a2b] bg-[#ff6a2b]/10 shadow-sm'
+                      : isLocked
+                      ? 'border-[#162733] bg-[#0b0f14]/40 opacity-50 cursor-not-allowed'
                       : 'border-[#162733] bg-[#0b0f14]/60 hover:border-[#1e3448] hover:bg-[#121821]'
                   }`}
                 >

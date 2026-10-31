@@ -37,6 +37,9 @@ interface SimulationPanelProps {
   onDismissError: () => void;
   // Poller status
   jobData: JobStatusResponse | null;
+  // Mode lock (e.g. autonomous monitoring active)
+  isModeLocked?: boolean;
+  modeLockedReason?: string;
 }
 
 const RESOLUTIONS: SimulationResolution[] = [60, 90, 120];
@@ -68,6 +71,8 @@ export function SimulationPanel({
   submissionError,
   onDismissError,
   jobData,
+  isModeLocked = false,
+  modeLockedReason,
 }: SimulationPanelProps) {
   const isRunning =
     jobData?.status === 'queued' || jobData?.status === 'running';
@@ -101,14 +106,20 @@ export function SimulationPanel({
             {(['LIVE', 'SCENARIO'] as OperatingMode[]).map((m) => (
               <button
                 key={m}
-                onClick={() => onModeChange(m)}
+                onClick={() => {
+                  if (isModeLocked) return;
+                  onModeChange(m);
+                }}
                 aria-pressed={mode === m}
-                disabled={isSubmitting || isRunning}
+                disabled={isSubmitting || isRunning || isModeLocked}
+                title={isModeLocked ? modeLockedReason : undefined}
                 className={`flex-1 py-1.5 text-[11px] font-semibold tracking-wider uppercase rounded border transition-colors ${
                   mode === m
                     ? m === 'LIVE'
                       ? 'border-[#2ecc71]/50 text-[#2ecc71] bg-[#2ecc71]/15 font-bold shadow-xs'
                       : 'border-[#f5a524]/50 text-[#f5a524] bg-[#f5a524]/15 font-bold shadow-xs'
+                    : isModeLocked
+                    ? 'border-[#162733] text-[#657787] opacity-50 cursor-not-allowed'
                     : 'border-[#162733] text-[#8b98a9] hover:border-[#1e3448] hover:text-[#e6edf3]'
                 }`}
               >
@@ -116,6 +127,13 @@ export function SimulationPanel({
               </button>
             ))}
           </div>
+
+          {isModeLocked && (
+            <div className="mt-1 text-[10px] text-[#f5a524] flex items-center gap-1">
+              <span aria-hidden="true">🔒</span>
+              <span>{modeLockedReason || 'Operating mode locked while monitoring is active.'}</span>
+            </div>
+          )}
         </div>
 
         {/* ── 2. Mode-Specific AOI / Ignition Context ────────────── */}
