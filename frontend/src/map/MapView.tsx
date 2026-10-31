@@ -13,6 +13,7 @@ import {
   type ErrorEvent,
 } from 'maplibre-gl';
 import { createBaseMapStyle, OSM_FALLBACK_TILES, OSM_ATTRIBUTION } from './mapLayers';
+import { createSettlementPopupNode, createDetectionPopupNode } from './mapPopups';
 import type { MapDataProps, MapLayerVisibility } from './mapTypes';
 import { formatArrivalMinutes } from '@/utils/format';
 
@@ -155,24 +156,10 @@ export function MapView({
         onSelectSettlement(settlementId);
       }
 
-      const arrivalMin = typeof props?.fire_arrival_min === 'number' ? props.fire_arrival_min : null;
-      const arrivalStr = formatArrivalMinutes(arrivalMin);
-      const departStr = typeof props?.depart_by_min === 'number' ? `${props.depart_by_min} min` : null;
-      const travelStr = typeof props?.route_travel_min === 'number' ? `${props.route_travel_min} min` : null;
-
       popupRef.current?.remove();
       const popup = new Popup({ offset: 12, className: 'ember-map-popup' })
         .setLngLat(coords)
-        .setHTML(`
-          <div style="font-family: inherit; font-size: 12px; color: #e6edf3; background: #121821; padding: 6px 8px; border-radius: 4px; border: 1px solid #162733;">
-            <div style="font-weight: 700; margin-bottom: 2px;">${props?.name || 'Settlement'}</div>
-            <div style="color: #8b98a9; font-size: 11px;">Status: <span style="font-weight: 600; color: #ff6a2b;">${props?.status || 'UNKNOWN'}</span></div>
-            ${arrivalMin !== null ? `<div style="color: #8b98a9; font-size: 11px;">Fire arrival: <span style="font-family: monospace;">+${arrivalStr}</span></div>` : ''}
-            ${departStr ? `<div style="color: #8b98a9; font-size: 11px;">Depart by: <span style="font-family: monospace;">${departStr}</span></div>` : ''}
-            ${travelStr ? `<div style="color: #8b98a9; font-size: 11px;">Travel time: <span style="font-family: monospace;">${travelStr}</span></div>` : ''}
-            ${props?.note ? `<div style="color: #8b98a9; font-size: 10px; margin-top: 2px; font-style: italic;">${props.note}</div>` : ''}
-          </div>
-        `)
+        .setDOMContent(createSettlementPopupNode(props))
         .addTo(map);
 
       popupRef.current = popup;
@@ -190,16 +177,7 @@ export function MapView({
       popupRef.current?.remove();
       const popup = new Popup({ offset: 10, className: 'ember-map-popup' })
         .setLngLat(coords)
-        .setHTML(`
-          <div style="font-family: inherit; font-size: 11px; color: #e6edf3; background: #121821; padding: 6px 8px; border-radius: 4px; border: 1px solid #162733;">
-            <div style="font-weight: 700; color: #ff6a2b; margin-bottom: 2px;">NASA FIRMS Detection</div>
-            <div style="color: #8b98a9;">Coords: <span style="font-family: monospace;">${coords[1].toFixed(4)}°N, ${coords[0].toFixed(4)}°E</span></div>
-            ${props?.frp ? `<div style="color: #8b98a9;">FRP: <span style="font-family: monospace;">${props.frp} MW</span></div>` : ''}
-            ${props?.confidence ? `<div style="color: #8b98a9;">Confidence: <span>${props.confidence}</span></div>` : ''}
-            ${props?.satellite ? `<div style="color: #8b98a9;">Satellite: <span>${props.satellite}</span></div>` : ''}
-            ${props?.acq_time_utc ? `<div style="color: #8b98a9;">Acquired: <span style="font-family: monospace;">${props.acq_time_utc}</span></div>` : ''}
-          </div>
-        `)
+        .setDOMContent(createDetectionPopupNode(coords, props))
         .addTo(map);
 
       popupRef.current = popup;
