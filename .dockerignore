@@ -20,6 +20,7 @@ __pycache__/
 frontend/node_modules/
 frontend/.vite/
 frontend/coverage/
+frontend/dist/
 
 # Test Suites and Artifacts
 tests/
@@ -28,4 +29,3 @@ tests/
 # Documentation assets not needed in container
 docs/figures/
 docs/screenshots/
-
