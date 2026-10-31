@@ -162,7 +162,7 @@ def build_facts(
     sorted_plans = sorted(result.plans, key=settlement_sort_key)
 
     for p in sorted_plans:
-        arr_m = round(p.fire_arrival_min) if p.fire_arrival_min is not None else 999
+        arr_m = round(p.fire_arrival_min) if (p.fire_arrival_min is not None and math.isfinite(p.fire_arrival_min)) else 999
         dep_m = round(p.depart_by_min) if p.depart_by_min is not None else 0
         tt_m = round(p.route_travel_min) if p.route_travel_min is not None else 0
         s_fact = (
