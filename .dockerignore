@@ -1,0 +1,31 @@
+# Git and Version Control
+.git
+.gitignore
+.gitattributes
+
+# Environment and Secrets
+.env
+.env.*
+*.env
+
+# Local Cache and Temporary Files
+.cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Frontend Dev and Dependencies
+frontend/node_modules/
+frontend/.vite/
+frontend/coverage/
+
+# Test Suites and Artifacts
+tests/
+.antigravity/
+
+# Documentation assets not needed in container
+docs/figures/
+docs/screenshots/
+
