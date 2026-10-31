@@ -11,10 +11,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TopBar } from '@/layouts/TopBar';
 import { MapWorkspace } from '@/map/MapWorkspace';
-import { Panel } from '@/components/Panel';
 import { FireIntelligencePanel } from '@/features/FireIntelligencePanel';
 import { SimulationPanel } from '@/features/SimulationPanel';
 import { AgentPanel } from '@/features/AgentPanel';
+import { SettlementsPanel } from '@/features/SettlementsPanel';
+import { MetricsSummary } from '@/features/MetricsSummary';
+import { EvacuationRoutesPanel } from '@/features/EvacuationRoutesPanel';
 import { useJobPoller } from '@/hooks/useJobPoller';
 import { getClusters, postPlan, ApiClientError } from '@/api/client';
 import type {
@@ -174,6 +176,7 @@ export function AppLayout() {
 
     setIsSubmitting(true);
     setSubmissionError(null);
+    setSelectedSettlementId(null);
 
     try {
       let aoi: AOIModel;
@@ -216,6 +219,7 @@ export function AppLayout() {
 
   const handleModeToggle = () => {
     if (isSubmitting || isRunning) return;
+    setSelectedSettlementId(null);
     setOperatingMode((m) => {
       const next = m === 'LIVE' ? 'SCENARIO' : 'LIVE';
       if (next === 'LIVE') {
@@ -227,6 +231,7 @@ export function AppLayout() {
 
   const handleModeChange = (mode: OperatingMode) => {
     if (isSubmitting || isRunning) return;
+    setSelectedSettlementId(null);
     if (mode === 'LIVE') {
       setScenarioIgnition(null);
     }
@@ -299,23 +304,25 @@ export function AppLayout() {
         trace={jobData?.trace}
       />
 
-      {/* Settlements panel using reusable Panel component */}
-      <Panel title="Settlements" icon="⬡" collapsible defaultCollapsed={false}>
-        <div className="p-3">
-          <p className="text-xs text-[#8b98a9] leading-relaxed">
-            Settlement analysis will appear here after running a simulation.
-          </p>
-        </div>
-      </Panel>
+      <MetricsSummary metrics={jobData?.result?.metrics ?? null} />
 
-      {/* Evacuation Routes panel using reusable Panel component */}
-      <Panel title="Evacuation Routes" icon="→" collapsible defaultCollapsed={false}>
-        <div className="p-3">
-          <p className="text-xs text-[#8b98a9] leading-relaxed">
-            Fire-aware and baseline route recommendations will appear here after simulation.
-          </p>
-        </div>
-      </Panel>
+      <SettlementsPanel
+        settlements={jobData?.result?.settlements ?? null}
+        routes={jobData?.result?.routes ?? null}
+        naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
+        selectedSettlementId={selectedSettlementId}
+        onSelectSettlement={setSelectedSettlementId}
+        jobStatus={jobData?.status ?? null}
+      />
+
+      <EvacuationRoutesPanel
+        settlements={jobData?.result?.settlements ?? null}
+        routes={jobData?.result?.routes ?? null}
+        naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
+        selectedSettlementId={selectedSettlementId}
+        onSelectSettlement={setSelectedSettlementId}
+        jobStatus={jobData?.status ?? null}
+      />
     </>
   );
 
