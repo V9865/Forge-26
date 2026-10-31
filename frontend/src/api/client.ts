@@ -2,26 +2,26 @@
  * EmberRoute — Centralized API client
  *
  * All backend communication is routed through this module.
- * Do not scatter fetch() calls across UI components.
+ * Strictly aligned with the FastAPI backend contracts in api/main.py.
  */
 
 import type {
-  ApiErrorResponse,
   AssumptionsResponse,
-  ClustersResponse,
+  ClusterItem,
+  ErrorResponse,
   HealthResponse,
-  JobPollResponse,
+  JobStatusResponse,
   MonitorRequest,
-  MonitorStatus,
+  MonitorStatusResponse,
+  PlanJobResponse,
   PlanRequest,
-  PlanResponse,
   ValidationResponse,
 } from '@/types';
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 // ─── Core fetch wrapper ────────────────────────────────────────────────────────
 
@@ -60,14 +60,14 @@ async function apiFetch<T>(
 
     if (!response.ok) {
       // Try to parse structured error from backend
-      let errorBody: ApiErrorResponse | null = null;
+      let errorBody: ErrorResponse | null = null;
       try {
-        errorBody = (await response.json()) as ApiErrorResponse;
+        errorBody = (await response.json()) as ErrorResponse;
       } catch {
         // Ignore parse failure
       }
 
-      const code = errorBody?.error?.code ?? 'HTTP_ERROR';
+      const code = errorBody?.error?.code ?? (response.status === 429 ? 'RATE_LIMITED' : 'HTTP_ERROR');
       const message =
         errorBody?.error?.message ?? `HTTP ${response.status}: ${response.statusText}`;
 
@@ -102,7 +102,7 @@ async function apiFetch<T>(
 
 /**
  * GET /api/health
- * Check backend availability.
+ * Check backend feed health and LLM availability.
  */
 export async function getHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health', {}, 5_000);
@@ -110,19 +110,20 @@ export async function getHealth(): Promise<HealthResponse> {
 
 /**
  * GET /api/clusters?hours=24
- * Retrieve available active-fire clusters.
+ * Retrieve available active-fire clusters from NASA FIRMS.
+ * Backend returns a bare array of ClusterItem.
  */
-export async function getClusters(hours = 24): Promise<ClustersResponse> {
-  return apiFetch<ClustersResponse>(`/api/clusters?hours=${hours}`);
+export async function getClusters(hours = 24): Promise<ClusterItem[]> {
+  return apiFetch<ClusterItem[]>(`/api/clusters?hours=${hours}`);
 }
 
 /**
  * POST /api/plan
- * Start a fire-spread and evacuation planning job.
- * Returns 202 with a job_id.
+ * Submit an asynchronous wildfire spread simulation and evacuation planning job.
+ * Returns 202 with job_id.
  */
-export async function postPlan(request: PlanRequest): Promise<PlanResponse> {
-  return apiFetch<PlanResponse>('/api/plan', {
+export async function postPlan(request: PlanRequest): Promise<PlanJobResponse> {
+  return apiFetch<PlanJobResponse>('/api/plan', {
     method: 'POST',
     body: JSON.stringify(request),
   });
@@ -130,18 +131,18 @@ export async function postPlan(request: PlanRequest): Promise<PlanResponse> {
 
 /**
  * GET /api/jobs/{job_id}
- * Poll job status and results.
+ * Poll job status, progress, trace and final simulation results.
  */
-export async function getJob(jobId: string): Promise<JobPollResponse> {
-  return apiFetch<JobPollResponse>(`/api/jobs/${encodeURIComponent(jobId)}`, {}, 10_000);
+export async function getJob(jobId: string): Promise<JobStatusResponse> {
+  return apiFetch<JobStatusResponse>(`/api/jobs/${encodeURIComponent(jobId)}`, {}, 10_000);
 }
 
 /**
  * POST /api/monitor
- * Enable or disable the autonomous monitoring agent.
+ * Enable or disable autonomous background polling and evaluation.
  */
-export async function postMonitor(request: MonitorRequest): Promise<void> {
-  await apiFetch<unknown>('/api/monitor', {
+export async function postMonitor(request: MonitorRequest): Promise<MonitorStatusResponse> {
+  return apiFetch<MonitorStatusResponse>('/api/monitor', {
     method: 'POST',
     body: JSON.stringify(request),
   });
@@ -149,15 +150,15 @@ export async function postMonitor(request: MonitorRequest): Promise<void> {
 
 /**
  * GET /api/monitor
- * Get current monitoring status.
+ * Inspect current autonomous background monitor state.
  */
-export async function getMonitor(): Promise<MonitorStatus> {
-  return apiFetch<MonitorStatus>('/api/monitor');
+export async function getMonitor(): Promise<MonitorStatusResponse> {
+  return apiFetch<MonitorStatusResponse>('/api/monitor');
 }
 
 /**
  * GET /api/assumptions
- * Get model assumptions and data source metadata.
+ * Retrieve full engineering and physical assumptions documentation.
  */
 export async function getAssumptions(): Promise<AssumptionsResponse> {
   return apiFetch<AssumptionsResponse>('/api/assumptions');
@@ -165,7 +166,7 @@ export async function getAssumptions(): Promise<AssumptionsResponse> {
 
 /**
  * GET /api/validation
- * Get validation metrics.
+ * Retrieve empirical wildfire spread validation table.
  */
 export async function getValidation(): Promise<ValidationResponse> {
   return apiFetch<ValidationResponse>('/api/validation');
@@ -174,4 +175,4 @@ export async function getValidation(): Promise<ValidationResponse> {
 // ─── Re-exports ────────────────────────────────────────────────────────────────
 
 export { ApiClientError };
-export type { ApiErrorResponse };
+export type { ErrorResponse, ErrorResponse as ApiErrorResponse };

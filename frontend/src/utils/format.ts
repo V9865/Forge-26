@@ -19,10 +19,23 @@ export function formatAge(date: Date | null): string {
 }
 
 /**
+ * Format minutes-until-arrival into a human readable string.
+ * Backend arrival times are provided in minutes (t_min, fire_arrival_min).
+ */
+export function formatArrivalMinutes(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return '—';
+  if (minutes <= 0) return 'Now';
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  const hours = minutes / 60;
+  if (hours < 2) return `${hours.toFixed(1)} hr`;
+  return `${Math.round(hours)} hr`;
+}
+
+/**
  * Format hours-until-arrival into a human readable string.
  */
-export function formatArrivalHours(hours: number | undefined): string {
-  if (hours === undefined) return '—';
+export function formatArrivalHours(hours: number | null | undefined): string {
+  if (hours === null || hours === undefined) return '—';
   if (hours <= 0) return 'Now';
   if (hours < 1) return `${Math.round(hours * 60)} min`;
   if (hours < 2) return `${hours.toFixed(1)} hr`;
@@ -92,4 +105,3 @@ export function formatCoords(lon: number, lat: number): string {
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
-

@@ -14,7 +14,7 @@ import {
 } from 'maplibre-gl';
 import { createBaseMapStyle, OSM_FALLBACK_TILES, OSM_ATTRIBUTION } from './mapLayers';
 import type { MapDataProps, MapLayerVisibility } from './mapTypes';
-import { formatArrivalHours } from '@/utils/format';
+import { formatArrivalMinutes } from '@/utils/format';
 
 interface MapViewProps extends MapDataProps {
   visibility: MapLayerVisibility;
@@ -23,10 +23,11 @@ interface MapViewProps extends MapDataProps {
 }
 
 export function MapView({
-  detections = [],
-  arrivalBands = [],
-  settlements = [],
-  routes = [],
+  detections = null,
+  arrivalBands = null,
+  settlements = null,
+  routes = null,
+  naiveCutSegments = null,
   selectedSettlementId,
   onSelectSettlement,
   scenarioIgnition,
@@ -154,6 +155,11 @@ export function MapView({
         onSelectSettlement(settlementId);
       }
 
+      const arrivalMin = typeof props?.fire_arrival_min === 'number' ? props.fire_arrival_min : null;
+      const arrivalStr = formatArrivalMinutes(arrivalMin);
+      const departStr = typeof props?.depart_by_min === 'number' ? `${props.depart_by_min} min` : null;
+      const travelStr = typeof props?.route_travel_min === 'number' ? `${props.route_travel_min} min` : null;
+
       popupRef.current?.remove();
       const popup = new Popup({ offset: 12, className: 'ember-map-popup' })
         .setLngLat(coords)
@@ -161,8 +167,10 @@ export function MapView({
           <div style="font-family: inherit; font-size: 12px; color: #e6edf3; background: #121821; padding: 6px 8px; border-radius: 4px; border: 1px solid #162733;">
             <div style="font-weight: 700; margin-bottom: 2px;">${props?.name || 'Settlement'}</div>
             <div style="color: #8b98a9; font-size: 11px;">Status: <span style="font-weight: 600; color: #ff6a2b;">${props?.status || 'UNKNOWN'}</span></div>
-            ${props?.fire_arrival_h !== undefined ? `<div style="color: #8b98a9; font-size: 11px;">Fire arrival: <span style="font-family: monospace;">+${props.fire_arrival_h}h</span></div>` : ''}
-            ${props?.depart_by ? `<div style="color: #8b98a9; font-size: 11px;">Depart by: <span style="font-family: monospace;">${props.depart_by}</span></div>` : ''}
+            ${arrivalMin !== null ? `<div style="color: #8b98a9; font-size: 11px;">Fire arrival: <span style="font-family: monospace;">+${arrivalStr}</span></div>` : ''}
+            ${departStr ? `<div style="color: #8b98a9; font-size: 11px;">Depart by: <span style="font-family: monospace;">${departStr}</span></div>` : ''}
+            ${travelStr ? `<div style="color: #8b98a9; font-size: 11px;">Travel time: <span style="font-family: monospace;">${travelStr}</span></div>` : ''}
+            ${props?.note ? `<div style="color: #8b98a9; font-size: 10px; margin-top: 2px; font-style: italic;">${props.note}</div>` : ''}
           </div>
         `)
         .addTo(map);
@@ -186,9 +194,10 @@ export function MapView({
           <div style="font-family: inherit; font-size: 11px; color: #e6edf3; background: #121821; padding: 6px 8px; border-radius: 4px; border: 1px solid #162733;">
             <div style="font-weight: 700; color: #ff6a2b; margin-bottom: 2px;">NASA FIRMS Detection</div>
             <div style="color: #8b98a9;">Coords: <span style="font-family: monospace;">${coords[1].toFixed(4)}°N, ${coords[0].toFixed(4)}°E</span></div>
+            ${props?.frp ? `<div style="color: #8b98a9;">FRP: <span style="font-family: monospace;">${props.frp} MW</span></div>` : ''}
             ${props?.confidence ? `<div style="color: #8b98a9;">Confidence: <span>${props.confidence}</span></div>` : ''}
-            ${props?.brightness ? `<div style="color: #8b98a9;">Brightness: <span>${props.brightness} K</span></div>` : ''}
-            ${props?.timestamp ? `<div style="color: #8b98a9;">Detected: <span style="font-family: monospace;">${props.timestamp}</span></div>` : ''}
+            ${props?.satellite ? `<div style="color: #8b98a9;">Satellite: <span>${props.satellite}</span></div>` : ''}
+            ${props?.acq_time_utc ? `<div style="color: #8b98a9;">Acquired: <span style="font-family: monospace;">${props.acq_time_utc}</span></div>` : ''}
           </div>
         `)
         .addTo(map);
@@ -267,121 +276,72 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
 
-    // A. Fire detections source
+    // A. Fire detections source (Real GeoJSON FeatureCollection directly)
     const detectionsSource = map.getSource('fire-detections') as GeoJSONSource | undefined;
     if (detectionsSource) {
-      const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
-        type: 'FeatureCollection',
-        features: detections.map((d, index) => ({
-          type: 'Feature',
-          id: index,
-          properties: {
-            confidence: d.confidence,
-            brightness: d.brightness,
-            timestamp: d.timestamp,
-            satellite: d.satellite,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: [d.longitude, d.latitude],
-          },
-        })),
-      };
-      detectionsSource.setData(geojson);
+      detectionsSource.setData(
+        detections ?? { type: 'FeatureCollection', features: [] },
+      );
     }
 
     // B. Arrival bands source — Wavefront progressive revelation (0 to 12 hours)
+    // t_min is in minutes from backend: 0-120min (0-2h), 120-240min (2-4h), 240-480min (4-8h), 480-720min (8-12h)
     // Boundary behavior:
-    // - At 0h: 0 bands appear (future bands never appear prematurely)
-    // - At 2h: 0–2h band appears (1 band)
-    // - At 4h: 0–2h and 2–4h bands appear (2 bands)
-    // - At 8h: 0–2h, 2–4h, 4–8h bands appear (3 bands; 8–12h does not appear prematurely)
-    // - At 12h: all 4 bands appear (4 bands)
+    // - At 0h (0m): 0 bands appear
+    // - At 2h (120m): 0-120min bands appear
+    // - At 4h (240m): 0-240min bands appear
+    // - At 8h (480m): 0-480min bands appear
+    // - At 12h (720m): all bands appear
     const arrivalSource = map.getSource('arrival-bands') as GeoJSONSource | undefined;
     if (arrivalSource) {
-      const filteredBands = arrivalBands.filter(
-        (b) => timeFilterHours > 0 && b.hours_min < timeFilterHours,
-      );
-      const geojson: GeoJSON.FeatureCollection = {
+      const maxMinutes = timeFilterHours * 60;
+      const rawFeatures = arrivalBands?.features ?? [];
+      const filteredFeatures =
+        timeFilterHours > 0
+          ? rawFeatures.filter((f) => {
+              const t = f.properties?.t_min;
+              return typeof t === 'number' && t <= maxMinutes;
+            })
+          : [];
+
+      arrivalSource.setData({
         type: 'FeatureCollection',
-        features: filteredBands.map((band, idx) => ({
-          type: 'Feature',
-          id: idx,
-          properties: {
-            hours_min: band.hours_min,
-            hours_max: band.hours_max,
-          },
-          geometry: band.geometry,
-        })),
-      };
-      arrivalSource.setData(geojson);
+        features: filteredFeatures,
+      });
     }
 
-    // C. Settlements source
+    // C. Settlements source (real FeatureCollection with isSelected flag)
     const settlementsSource = map.getSource('settlements') as GeoJSONSource | undefined;
     if (settlementsSource) {
-      const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+      const rawSettlements = settlements?.features ?? [];
+      const features = rawSettlements.map((s) => ({
+        ...s,
+        properties: {
+          ...s.properties,
+          isSelected: s.properties?.id === selectedSettlementId,
+        },
+      }));
+
+      settlementsSource.setData({
         type: 'FeatureCollection',
-        features: settlements.map((s) => ({
-          type: 'Feature',
-          id: s.id,
-          properties: {
-            id: s.id,
-            name: s.name,
-            status: s.status,
-            fire_arrival_h: s.fire_arrival_h,
-            depart_by: s.depart_by,
-            isSelected: s.id === selectedSettlementId,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: s.coordinates,
-          },
-        })),
-      };
-      settlementsSource.setData(geojson);
+        features,
+      });
     }
 
-    // D. Safe fire-aware evacuation routes
+    // D. Safe fire-aware evacuation routes (result.routes FeatureCollection)
     const routesSource = map.getSource('evacuation-routes') as GeoJSONSource | undefined;
     if (routesSource) {
-      const safeRoutes = routes.filter((r) => r.is_fire_aware && !r.is_baseline);
-      const geojson: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: safeRoutes.map((r) => ({
-          type: 'Feature',
-          id: r.id,
-          properties: {
-            id: r.id,
-            settlement_id: r.settlement_id,
-            distance_km: r.distance_km,
-            duration_min: r.duration_min,
-          },
-          geometry: r.geometry,
-        })),
-      };
-      routesSource.setData(geojson);
+      routesSource.setData(
+        routes ?? { type: 'FeatureCollection', features: [] },
+      );
     }
 
-    // E. Naive baseline routes (cut segments)
+    // E. Naive baseline routes cut by fire (result.naive_cut_segments FeatureCollection)
     const baselineSource = map.getSource('baseline-routes') as GeoJSONSource | undefined;
     if (baselineSource) {
-      const baseRoutes = routes.filter((r) => r.is_baseline);
-      const geojson: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: baseRoutes.map((r) => ({
-          type: 'Feature',
-          id: r.id,
-          properties: {
-            id: r.id,
-            settlement_id: r.settlement_id,
-            cut_segments: r.cut_segments,
-            cut_reason: r.cut_reason,
-          },
-          geometry: r.geometry,
-        })),
-      };
-      baselineSource.setData(geojson);
+      baselineSource.setData(
+        naiveCutSegments ?? { type: 'FeatureCollection', features: [] },
+      );
     }
 
     // F. Scenario ignition point — strictly isolated:
@@ -410,6 +370,7 @@ export function MapView({
     arrivalBands,
     settlements,
     routes,
+    naiveCutSegments,
     selectedSettlementId,
     scenarioIgnition,
     isScenarioMode,
@@ -452,8 +413,20 @@ export function MapView({
     if (!map) return;
 
     const coords: [number, number][] = [];
-    detections.forEach((d) => coords.push([d.longitude, d.latitude]));
-    settlements.forEach((s) => coords.push(s.coordinates));
+
+    // Safely extract coordinates from GeoJSON FeatureCollections
+    detections?.features?.forEach((f) => {
+      if (f.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
+        coords.push(f.geometry.coordinates as [number, number]);
+      }
+    });
+
+    settlements?.features?.forEach((s) => {
+      if (s.geometry?.type === 'Point' && Array.isArray(s.geometry.coordinates)) {
+        coords.push(s.geometry.coordinates as [number, number]);
+      }
+    });
+
     if (isScenarioMode && scenarioIgnition) {
       coords.push([scenarioIgnition.lng, scenarioIgnition.lat]);
     }
@@ -470,11 +443,15 @@ export function MapView({
     map.fitBounds(bounds, { padding: 48, maxZoom: 13, duration: 800 });
   };
 
+  const selectedSettlementFeature = settlements?.features?.find(
+    (s) => s.properties?.id === selectedSettlementId,
+  );
+
   return (
     <div className="relative w-full h-full min-h-0 min-w-0">
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Top Left Controls Stack: Fit Area & Fallback Notice (cleanly stacked vertically without overlap) */}
+      {/* Top Left Controls Stack: Fit Area & Fallback Notice */}
       <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5 pointer-events-auto">
         <button
           onClick={fitToFeatures}
@@ -498,15 +475,15 @@ export function MapView({
         )}
       </div>
 
-      {/* Selected Settlement Highlight Banner (positioned to avoid top-left control stack) */}
+      {/* Selected Settlement Highlight Banner */}
       {selectedSettlementId && (
         <div className="absolute top-3 right-14 z-10 hidden sm:flex items-center gap-2 px-2.5 py-1 bg-[#121821]/90 backdrop-blur-md border border-[#ff6a2b]/40 rounded shadow text-xs">
           <span className="text-[#ff6a2b]">⬡</span>
           <span className="text-[#e6edf3] font-medium">
-            {settlements.find((s) => s.id === selectedSettlementId)?.name || 'Selected Settlement'}
+            {selectedSettlementFeature?.properties?.name || 'Selected Settlement'}
           </span>
           <span className="text-[10px] text-[#8b98a9] font-mono">
-            {formatArrivalHours(settlements.find((s) => s.id === selectedSettlementId)?.fire_arrival_h)}
+            {formatArrivalMinutes(selectedSettlementFeature?.properties?.fire_arrival_min)}
           </span>
           <button
             onClick={() => onSelectSettlement?.(null)}

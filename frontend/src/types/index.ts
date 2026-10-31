@@ -1,269 +1,289 @@
 /**
  * EmberRoute — Centralized TypeScript types
  *
- * These types define the agreed API contract.
- * Nested field structures for `aoi`, `ignition`, and `wind_override`
- * are marked as `unknown` pending OpenAPI confirmation.
- * Do NOT manually edit generated sections once OpenAPI types are available.
+ * Fully aligned with the frozen backend API contract in:
+ * - api/schemas.py
+ * - api/main.py
+ * - api/jobs.py
+ * - api/geojson.py
  */
 
 import type {
-  Geometry,
+  FeatureCollection,
   LineString,
-  MultiLineString,
+  MultiPolygon,
+  Point,
+  Polygon,
 } from 'geojson';
 
-// ─── Operating modes ──────────────────────────────────────────────────────────
+// ─── Operating modes & Parameters ─────────────────────────────────────────────
 
 export type OperatingMode = 'LIVE' | 'SCENARIO';
 
 export type SimulationResolution = 60 | 90 | 120;
 
-// ─── Data freshness / quality ─────────────────────────────────────────────────
-
-export type DataQuality = 'LIVE' | 'SCENARIO' | 'STALE' | 'DEGRADED' | 'UNAVAILABLE';
+export type ResolutionM = SimulationResolution;
 
 // ─── Evacuation status ────────────────────────────────────────────────────────
 
-export type EvacuationStatus =
+export type SettlementStatus =
+  | 'NOT_THREATENED'
   | 'EVACUATE'
-  | 'DEPART_SOON'
   | 'TRAPPED'
-  | 'ALREADY_BURNING'
-  | 'NOT_THREATENED';
+  | 'ALREADY_BURNING';
 
-// ─── API: Health ──────────────────────────────────────────────────────────────
+export type EvacuationStatus = SettlementStatus | 'DEPART_SOON';
 
-export interface HealthResponse {
+// ─── Geographic & Physical Spec Models ────────────────────────────────────────
+
+export interface AOIModel {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+export interface IgnitionPoint {
+  lat: number;
+  lon: number;
+}
+
+export interface WindOverrideModel {
+  speed_ms?: number | null;
+  dir_from_deg?: number | null;
+}
+
+export interface GridModel {
+  res_m: number;
+  nx: number;
+  ny: number;
+}
+
+// ─── Meteorological Data Models ───────────────────────────────────────────────
+
+export interface WindNowModel {
+  speed_ms: number;
+  dir_from_deg: number;
+  rh: number;
+}
+
+export interface WindPointModel {
+  t_utc: string;
+  speed_ms: number;
+  dir_from_deg: number;
+  rh: number;
+}
+
+export interface WindModel {
+  source: string;
+  is_override: boolean;
+  is_stale: boolean;
+  fetched_at_utc: string;
+  now: WindNowModel;
+  series: WindPointModel[];
+}
+
+// ─── Briefing, Provenance & Trace Models ──────────────────────────────────────
+
+export interface BriefingModel {
+  text: string;
+  used_llm: boolean;
+  provider?: string | null;
+  model?: string | null;
+  dropped_sentences: number;
+  facts: Record<string, string>;
+}
+
+export interface ProvenanceModel {
+  name: string;
+  source: string;
+  url?: string | null;
+  fetched_at_utc: string;
+  age_s?: number | null;
+  ttl_s: number;
+  is_stale: boolean;
+  note?: string | null;
+}
+
+export interface TraceStepModel {
+  ts_utc: string;
+  step: string;
+  tool?: string | null;
   status: string;
-  version?: string;
-  timestamp?: string;
+  duration_ms: number;
+  note?: string | null;
 }
 
-// ─── API: Fire clusters ───────────────────────────────────────────────────────
+// Alias for backwards compatibility
+export type TraceEntry = TraceStepModel;
 
-export interface FireCluster {
-  /** Unique cluster identifier */
-  id: string;
-  /** Human-readable label or name */
-  label?: string;
-  /** Number of fire detections in this cluster */
-  detection_count: number;
-  /** Cluster centroid [longitude, latitude] */
-  centroid: [number, number];
-  /** Bounding box [west, south, east, north] */
-  bbox?: [number, number, number, number];
-  /** Detection timestamps span */
-  first_detected?: string;
-  last_detected?: string;
-  /** Source satellite/sensor */
-  source?: string;
+// ─── GeoJSON Layer Feature Properties ─────────────────────────────────────────
+
+export interface FireDetectionProperties {
+  acq_time_utc: string;
+  frp: number;
+  confidence: number | string;
+  satellite: string;
+  [key: string]: unknown;
 }
 
-export interface ClustersResponse {
-  clusters: FireCluster[];
-  feed_freshness?: string;
-  feed_status?: 'OK' | 'STALE' | 'DOWN';
-  hours_requested?: number;
+export interface ArrivalBandProperties {
+  t_min: number;
+  [key: string]: unknown;
 }
 
-// ─── API: Plan request ────────────────────────────────────────────────────────
-
-/**
- * Area of interest.
- * Exact nested structure to be confirmed from OpenAPI.
- */
-export type AoiInput = Record<string, unknown>;
-
-/**
- * Ignition point for SCENARIO mode.
- * Exact nested structure to be confirmed from OpenAPI.
- */
-export type IgnitionInput = Record<string, unknown>;
-
-/**
- * Wind override parameters.
- * Exact nested structure to be confirmed from OpenAPI.
- */
-export type WindOverrideInput = Record<string, unknown>;
-
-export interface PlanRequest {
-  aoi: AoiInput;
-  mode: OperatingMode;
-  ignition?: IgnitionInput;
-  wind_override?: WindOverrideInput;
-  resolution_m: SimulationResolution;
-}
-
-export interface PlanResponse {
-  job_id: string;
-}
-
-// ─── API: Job polling ─────────────────────────────────────────────────────────
-
-export type JobStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'ERROR';
-
-export interface TraceEntry {
-  timestamp: string;
-  stage: string;
-  message: string;
-  level?: 'INFO' | 'WARN' | 'ERROR';
-}
-
-export interface ArrivalBand {
-  /** Hours from now */
-  hours_min: number;
-  hours_max: number;
-  /** GeoJSON geometry */
-  geometry: Geometry;
-}
-
-export interface Settlement {
+export interface SettlementProperties {
   id: string;
   name: string;
-  coordinates: [number, number];
-  status: EvacuationStatus;
-  /** Estimated fire arrival in hours */
-  fire_arrival_h?: number;
-  /** ISO timestamp of latest safe departure */
-  depart_by?: string;
-  /** ID of recommended evacuation route */
-  route_id?: string;
-  warnings?: string[];
+  status: SettlementStatus;
+  fire_arrival_min: number | null;
+  depart_by_min: number | null;
+  route_travel_min: number | null;
+  naive_cut: boolean;
+  note?: string | null;
+  isSelected?: boolean;
+  [key: string]: unknown;
 }
 
-export interface EvacuationRoute {
-  id: string;
+export interface RouteProperties {
   settlement_id: string;
-  geometry: LineString | MultiLineString;
-  is_fire_aware: boolean;
-  /** Whether this is the fire-blind naive baseline */
-  is_baseline?: boolean;
-  distance_km?: number;
-  duration_min?: number;
-  cut_segments?: number;
-  cut_reason?: string;
+  kind?: string;
+  cut?: boolean;
+  [key: string]: unknown;
 }
 
-export interface JobResult {
-  /** v0 */
+export interface CutSegmentProperties {
+  settlement_id: string;
+  [key: string]: unknown;
+}
+
+// ─── Typed GeoJSON Feature Collections ────────────────────────────────────────
+
+export type DetectionsFeatureCollection = FeatureCollection<Point, FireDetectionProperties>;
+
+export type ArrivalBandsFeatureCollection = FeatureCollection<Polygon | MultiPolygon, ArrivalBandProperties>;
+
+export type SettlementsFeatureCollection = FeatureCollection<Point, SettlementProperties>;
+
+export type RoutesFeatureCollection = FeatureCollection<LineString, RouteProperties>;
+
+export type CutSegmentsFeatureCollection = FeatureCollection<LineString, CutSegmentProperties>;
+
+// ─── Simulation Plan Result ───────────────────────────────────────────────────
+
+export interface PlanResult {
+  mode: OperatingMode;
+  aoi: AOIModel;
+  grid: GridModel;
+  wind: WindModel;
+  detections: DetectionsFeatureCollection;
+  arrival_bands?: ArrivalBandsFeatureCollection | null;
+  settlements?: SettlementsFeatureCollection | null;
+  routes?: RoutesFeatureCollection | null;
+  naive_cut_segments?: CutSegmentsFeatureCollection | null;
+  metrics: Record<string, unknown>;
+  briefing?: BriefingModel | null;
+  provenance: ProvenanceModel[];
+  warnings: string[];
+  trace: TraceStepModel[];
+}
+
+// Alias for backwards compatibility
+export type JobResult = PlanResult;
+
+// ─── API: Plan Request & Response ─────────────────────────────────────────────
+
+export interface PlanRequest {
+  aoi: AOIModel;
   mode?: OperatingMode;
-  aoi?: AoiInput;
-  grid?: Record<string, unknown>;
-  wind?: WindInfo;
-  detections?: FireDetection[];
-  provenance?: ProvenanceInfo[];
-  warnings?: string[];
-
-  /** v1 */
-  arrival_bands?: ArrivalBand[];
-  burned_area_km2?: number;
-
-  /** v2 */
-  settlements?: Settlement[];
-  routes?: EvacuationRoute[];
-  naive_cut_segments?: number;
-  evacuation_metrics?: EvacuationMetrics;
-
-  /** v3 */
-  briefing?: string | BriefingStructured;
+  ignition?: IgnitionPoint | null;
+  wind_override?: WindOverrideModel | null;
+  resolution_m?: ResolutionM;
 }
 
-export interface JobPollResponse {
+export interface PlanJobResponse {
+  job_id: string;
+}
+
+// Alias for backwards compatibility
+export type PlanResponse = PlanJobResponse;
+
+// ─── API: Job Polling ─────────────────────────────────────────────────────────
+
+export type JobStatus = 'queued' | 'running' | 'done' | 'error';
+
+export interface JobStatusResponse {
   job_id: string;
   status: JobStatus;
-  stage?: string;
-  progress?: number;
-  trace?: TraceEntry[];
-  result?: JobResult;
-  error?: ApiError;
+  stage?: string | null;
+  progress: number; // 0.0 to 1.0 from backend
+  trace: TraceStepModel[];
+  result?: PlanResult | null;
+  error?: ErrorDetail | null;
 }
 
-// ─── Supporting data types ────────────────────────────────────────────────────
+// Alias for backwards compatibility
+export type JobPollResponse = JobStatusResponse;
 
-export interface FireDetection {
-  latitude: number;
-  longitude: number;
-  timestamp?: string;
-  satellite?: string;
-  confidence?: number | 'low' | 'nominal' | 'high';
-  brightness?: number;
-  source?: string;
+// ─── API: Clusters ────────────────────────────────────────────────────────────
+
+export interface ClusterItem {
+  id: string;
+  lat: number;
+  lon: number;
+  count: int;
+  total_frp: number;
+  suggested_aoi: AOIModel;
 }
 
-export interface WindInfo {
-  speed_ms?: number;
-  direction_deg?: number;
-  source?: string;
-  timestamp?: string;
-  is_override?: boolean;
+type int = number;
+
+// ─── API: Health Diagnostics ──────────────────────────────────────────────────
+
+export interface FeedHealthDetail {
+  ok: boolean;
+  latency_ms: number;
+  detail: string;
+  checked_at: string;
 }
 
-export interface ProvenanceInfo {
-  source: string;
-  url?: string;
-  description?: string;
-  freshness?: string;
-  status?: 'OK' | 'STALE' | 'DOWN';
-}
-
-export interface EvacuationMetrics {
-  settlements_total?: number;
-  settlements_threatened?: number;
-  settlements_trapped?: number;
-  routes_available?: number;
-  time_to_first_threat_h?: number;
-}
-
-export interface BriefingStructured {
-  summary?: string;
-  threat_assessment?: string;
-  recommended_actions?: string[];
-  caveats?: string[];
+export interface HealthResponse {
+  feeds: Record<string, FeedHealthDetail>;
 }
 
 // ─── API: Monitor ─────────────────────────────────────────────────────────────
 
 export interface MonitorRequest {
   enabled: boolean;
-  aoi?: AoiInput;
+  aoi?: AOIModel | null;
   mode?: OperatingMode;
-  ignition?: IgnitionInput;
-  wind_override?: WindOverrideInput;
+  ignition?: IgnitionPoint | null;
+  wind_override?: WindOverrideModel | null;
   poll_s?: number;
 }
 
-export interface MonitorStatus {
+export interface MonitorStatusResponse {
   enabled: boolean;
-  last_check?: string;
-  next_check?: string;
-  changes_detected?: string[];
-  replanning_triggered?: boolean;
-  current_job_id?: string;
+  last_cycle_utc?: string | null;
+  last_reasons: string[];
+  current_job_id?: string | null;
+  next_poll_utc?: string | null;
 }
 
-// ─── API: Assumptions ────────────────────────────────────────────────────────
+// Alias for backwards compatibility
+export type MonitorStatus = MonitorStatusResponse;
+
+// ─── API: Assumptions & Validation ────────────────────────────────────────────
 
 export interface AssumptionsResponse {
-  model_type?: string;
-  limitations?: string[];
-  data_sources?: ProvenanceInfo[];
-  notes?: string[];
-}
-
-// ─── API: Validation ─────────────────────────────────────────────────────────
-
-export interface ValidationMetric {
-  name: string;
-  value: number | string;
-  unit?: string;
-  description?: string;
+  text: string;
 }
 
 export interface ValidationResponse {
-  metrics?: ValidationMetric[];
-  notes?: string[];
-  last_validated?: string;
+  available: boolean;
+  events: Record<string, unknown>[];
+  parameters: Record<string, unknown>;
+  summary: Record<string, unknown>;
 }
 
 // ─── API: Errors ──────────────────────────────────────────────────────────────
@@ -278,16 +298,23 @@ export type ApiErrorCode =
   | 'NEEDS_SCENARIO'
   | 'INTERNAL'
   | 'NETWORK_ERROR'
-  | 'TIMEOUT';
+  | 'TIMEOUT'
+  | 'RATE_LIMITED';
 
-export interface ApiError {
-  code: ApiErrorCode | string;
+export interface ErrorDetail {
+  code: string;
   message: string;
 }
 
-export interface ApiErrorResponse {
-  error: ApiError;
+// Alias for backwards compatibility
+export type ApiError = ErrorDetail;
+
+export interface ErrorResponse {
+  error: ErrorDetail;
 }
+
+// Alias for backwards compatibility
+export type ApiErrorResponse = ErrorResponse;
 
 // ─── App state ────────────────────────────────────────────────────────────────
 

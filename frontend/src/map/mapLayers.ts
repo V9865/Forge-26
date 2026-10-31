@@ -2,7 +2,7 @@
  * EmberRoute — MapLibre Style Specification & Layer Configurations
  *
  * Implements the dark basemap (Carto Dark) with OSM fallback,
- * arrival-time band polygon styling, settlement markers with white rings,
+ * arrival-time band polygon styling (t_min in minutes), settlement markers with white rings,
  * fire detection clustering, and dual route styling.
  */
 
@@ -78,7 +78,7 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
         maxzoom: 22,
       },
 
-      // 2. Arrival Bands Fill (Layered below roads & settlements)
+      // 2. Arrival Bands Fill (Layered below roads & settlements, keyed on t_min minutes)
       {
         id: 'arrival-bands-fill',
         type: 'fill',
@@ -87,27 +87,27 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
           'fill-color': [
             'interpolate',
             ['linear'],
-            ['get', 'hours_max'],
-            2,
+            ['get', 't_min'],
+            120,
             '#ff3b30',
-            4,
+            240,
             '#ff8a00',
-            8,
+            480,
             '#ffc400',
-            12,
+            720,
             '#ffe58a',
           ],
           'fill-opacity': [
             'interpolate',
             ['linear'],
-            ['get', 'hours_max'],
-            2,
+            ['get', 't_min'],
+            120,
             0.55,
-            4,
+            240,
             0.5,
-            8,
+            480,
             0.45,
-            12,
+            720,
             0.4,
           ],
         },
@@ -120,14 +120,14 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
           'line-color': [
             'interpolate',
             ['linear'],
-            ['get', 'hours_max'],
-            2,
+            ['get', 't_min'],
+            120,
             '#ff3b30',
-            4,
+            240,
             '#ff8a00',
-            8,
+            480,
             '#ffc400',
-            12,
+            720,
             '#ffe58a',
           ],
           'line-width': 1.5,
@@ -266,8 +266,6 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
             ['get', 'status'],
             'EVACUATE',
             '#2ecc71',
-            'DEPART_SOON',
-            '#f5a524',
             'TRAPPED',
             '#ff3b30',
             'ALREADY_BURNING',
@@ -351,4 +349,3 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
     ],
   };
 }
-

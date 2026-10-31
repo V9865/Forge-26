@@ -4,7 +4,7 @@
  */
 
 import { Panel } from '@/components/Panel';
-import type { JobPollResponse, OperatingMode, SimulationResolution } from '@/types';
+import type { JobStatusResponse, OperatingMode, SimulationResolution } from '@/types';
 
 interface SimulationPanelProps {
   mode: OperatingMode;
@@ -14,7 +14,7 @@ interface SimulationPanelProps {
   canSubmit: boolean;
   onSubmit: () => void;
   isSubmitting: boolean;
-  jobData: JobPollResponse | null;
+  jobData: JobStatusResponse | null;
 }
 
 const RESOLUTIONS: SimulationResolution[] = [60, 90, 120];
@@ -30,7 +30,12 @@ export function SimulationPanel({
   jobData,
 }: SimulationPanelProps) {
   const isRunning =
-    jobData?.status === 'PENDING' || jobData?.status === 'RUNNING';
+    jobData?.status === 'queued' || jobData?.status === 'running';
+
+  const progressPct = Math.min(
+    100,
+    Math.max(0, Math.round((jobData?.progress ?? 0) * 100)),
+  );
 
   return (
     <Panel title="Simulation" icon="▶" collapsible>
@@ -96,15 +101,15 @@ export function SimulationPanel({
             <div className="flex justify-between text-[11px] mb-1">
               <span className="text-[#8b98a9]">{jobData?.stage ?? 'Initialising…'}</span>
               <span className="tabular-nums text-[#f5a524]">
-                {jobData?.progress !== undefined ? `${Math.round(jobData.progress)}%` : '…'}
+                {`${progressPct}%`}
               </span>
             </div>
             <div className="w-full h-1 bg-[#162733] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#ff6a2b] rounded-full transition-all duration-300"
-                style={{ width: `${jobData?.progress ?? 0}%` }}
+                style={{ width: `${progressPct}%` }}
                 role="progressbar"
-                aria-valuenow={jobData?.progress ?? 0}
+                aria-valuenow={progressPct}
                 aria-valuemin={0}
                 aria-valuemax={100}
               />
@@ -118,26 +123,20 @@ export function SimulationPanel({
           disabled={!canSubmit || isSubmitting || isRunning}
           className={`w-full py-2 rounded text-sm font-semibold tracking-wide transition-all ${
             canSubmit && !isSubmitting && !isRunning
-              ? 'bg-[#ff6a2b] hover:bg-[#ff8a4a] text-white'
-              : 'bg-[#162733] text-[#657787] cursor-not-allowed'
+              ? 'bg-[#ff6a2b] hover:bg-[#ff854d] text-white shadow-lg cursor-pointer'
+              : 'bg-[#162733] text-[#657787] cursor-not-allowed opacity-60'
           }`}
           aria-busy={isSubmitting || isRunning}
         >
-          {isRunning
-            ? 'Running…'
-            : isSubmitting
+          {isSubmitting
             ? 'Submitting…'
-            : 'Run Simulation'}
+            : isRunning
+            ? 'Simulating…'
+            : mode === 'LIVE'
+            ? '▶ Run Simulation'
+            : '▶ Run Scenario'}
         </button>
-
-        {/* Cluster selection note */}
-        {!canSubmit && mode === 'LIVE' && (
-          <p className="text-[11px] text-[#657787] text-center">
-            Select a fire cluster first
-          </p>
-        )}
       </div>
     </Panel>
   );
 }
-

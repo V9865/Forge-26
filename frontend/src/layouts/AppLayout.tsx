@@ -148,10 +148,11 @@ export function AppLayout() {
         {/* ── Center: Map Workspace (full width on tablet & mobile) ─ */}
         <main className="relative flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden" role="main">
           <MapWorkspace
-            detections={jobData?.result?.detections ?? []}
-            arrivalBands={jobData?.result?.arrival_bands ?? []}
-            settlements={jobData?.result?.settlements ?? []}
-            routes={jobData?.result?.routes ?? []}
+            detections={jobData?.result?.detections ?? null}
+            arrivalBands={jobData?.result?.arrival_bands ?? null}
+            settlements={jobData?.result?.settlements ?? null}
+            routes={jobData?.result?.routes ?? null}
+            naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
             selectedSettlementId={selectedSettlementId}
             onSelectSettlement={setSelectedSettlementId}
             scenarioIgnition={operatingMode === 'SCENARIO' ? scenarioIgnition : null}

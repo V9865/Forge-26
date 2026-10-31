@@ -4,24 +4,24 @@
  * Polling rules:
  * - Every 1s for the first 20s.
  * - Every 2s thereafter.
- * - Stops on DONE or ERROR status.
+ * - Stops on 'done' or 'error' status.
  * - Cleans up on unmount or job change.
- * - Network failures set status to ERROR and clear isPolling.
+ * - Network failures set status to 'error' and clear isPolling.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { getJob, ApiClientError } from '@/api/client';
-import type { JobPollResponse, JobStatus } from '@/types';
+import type { JobStatus, JobStatusResponse } from '@/types';
 
 interface UseJobPollerResult {
-  data: JobPollResponse | null;
+  data: JobStatusResponse | null;
   status: JobStatus | null;
   isPolling: boolean;
   error: string | null;
 }
 
 export function useJobPoller(jobId: string | null): UseJobPollerResult {
-  const [data, setData] = useState<JobPollResponse | null>(null);
+  const [data, setData] = useState<JobStatusResponse | null>(null);
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
 
       const startTime = Date.now();
       setData(null);
-      setStatus('PENDING');
+      setStatus('queued');
       setIsPolling(true);
       setError(null);
 
@@ -69,7 +69,7 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
           setData(result);
           setStatus(result.status);
 
-          if (result.status === 'DONE' || result.status === 'ERROR') {
+          if (result.status === 'done' || result.status === 'error') {
             setIsPolling(false);
             return;
           }
@@ -86,7 +86,7 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
               : 'Failed to poll job status.';
 
           setError(message);
-          setStatus('ERROR');
+          setStatus('error');
           setIsPolling(false);
         }
       };

@@ -20,7 +20,7 @@ interface TopBarProps {
   operatingMode: OperatingMode;
   onModeToggle: () => void;
   jobStatus: JobStatus | null;
-  jobStage?: string;
+  jobStage?: string | null;
   isMonitoring: boolean;
   windOverrideActive: boolean;
   selectedArea?: string;
@@ -156,7 +156,7 @@ export function TopBar({
       {/* ── Right section: Indicators & Mobile drawer toggle ── */}
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {/* Simulation status */}
-        {jobStatus && jobStatus !== 'DONE' && jobStatus !== 'ERROR' && (
+        {jobStatus && jobStatus !== 'done' && jobStatus !== 'error' && (
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-[#f5a524]">
             <span className="animate-pulse" aria-hidden="true">◉</span>
             <span className="hidden sm:inline">

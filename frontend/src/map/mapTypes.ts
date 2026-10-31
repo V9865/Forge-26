@@ -2,7 +2,13 @@
  * EmberRoute — Map types and layer definitions
  */
 
-import type { ArrivalBand, EvacuationRoute, FireDetection, Settlement } from '@/types';
+import type {
+  ArrivalBandsFeatureCollection,
+  CutSegmentsFeatureCollection,
+  DetectionsFeatureCollection,
+  RoutesFeatureCollection,
+  SettlementsFeatureCollection,
+} from '@/types';
 
 export interface MapLayerVisibility {
   detections: boolean;
@@ -21,10 +27,11 @@ export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
 };
 
 export interface MapDataProps {
-  detections?: FireDetection[];
-  arrivalBands?: ArrivalBand[];
-  settlements?: Settlement[];
-  routes?: EvacuationRoute[];
+  detections?: DetectionsFeatureCollection | null;
+  arrivalBands?: ArrivalBandsFeatureCollection | null;
+  settlements?: SettlementsFeatureCollection | null;
+  routes?: RoutesFeatureCollection | null;
+  naiveCutSegments?: CutSegmentsFeatureCollection | null;
   selectedSettlementId?: string | null;
   onSelectSettlement?: (settlementId: string | null) => void;
   // Scenario ignition point
@@ -32,4 +39,3 @@ export interface MapDataProps {
   onSelectIgnition?: (point: { lat: number; lng: number }) => void;
   isScenarioMode?: boolean;
 }
-

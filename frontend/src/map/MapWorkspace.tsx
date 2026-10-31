@@ -2,6 +2,7 @@
  * MapWorkspace — the primary map workspace container.
  *
  * Integrates MapView, LayerControls, TimeSlider, and arrival-band legend.
+ * Consumes real GeoJSON FeatureCollections directly.
  */
 
 import { useState } from 'react';
@@ -15,10 +16,11 @@ interface MapWorkspaceProps extends MapDataProps {
 }
 
 export function MapWorkspace({
-  detections = [],
-  arrivalBands = [],
-  settlements = [],
-  routes = [],
+  detections = null,
+  arrivalBands = null,
+  settlements = null,
+  routes = null,
+  naiveCutSegments = null,
   selectedSettlementId,
   onSelectSettlement,
   scenarioIgnition,
@@ -29,11 +31,14 @@ export function MapWorkspace({
   const [timeFilterHours, setTimeFilterHours] = useState<number>(12);
 
   const hasData =
-    detections.length > 0 ||
-    arrivalBands.length > 0 ||
-    settlements.length > 0 ||
-    routes.length > 0 ||
+    (detections?.features?.length ?? 0) > 0 ||
+    (arrivalBands?.features?.length ?? 0) > 0 ||
+    (settlements?.features?.length ?? 0) > 0 ||
+    (routes?.features?.length ?? 0) > 0 ||
+    (naiveCutSegments?.features?.length ?? 0) > 0 ||
     (isScenarioMode && Boolean(scenarioIgnition));
+
+  const hasArrivalBands = (arrivalBands?.features?.length ?? 0) > 0;
 
   return (
     <div
@@ -48,6 +53,7 @@ export function MapWorkspace({
           arrivalBands={arrivalBands}
           settlements={settlements}
           routes={routes}
+          naiveCutSegments={naiveCutSegments}
           selectedSettlementId={selectedSettlementId}
           onSelectSettlement={onSelectSettlement}
           scenarioIgnition={scenarioIgnition}
@@ -74,7 +80,7 @@ export function MapWorkspace({
         {/* Bottom Floating Bar: Layer Controls & Time Slider */}
         <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-2 max-w-[calc(100%-2rem)]">
           <LayerControls visibility={visibility} onChange={setVisibility} />
-          {arrivalBands.length > 0 && (
+          {hasArrivalBands && (
             <TimeSlider
               maxHours={12}
               value={timeFilterHours}
@@ -92,10 +98,10 @@ export function MapWorkspace({
             Arrival Bands
           </div>
           {[
-            { color: '#ff3b30', label: '0–2h wavefront', pattern: '█' },
-            { color: '#ff8a00', label: '2–4h wavefront', pattern: '█' },
-            { color: '#ffc400', label: '4–8h wavefront', pattern: '█' },
-            { color: '#ffe58a', label: '8–12h wavefront', pattern: '█' },
+            { color: '#ff3b30', label: '0–2h wavefront (≤120m)', pattern: '█' },
+            { color: '#ff8a00', label: '2–4h wavefront (≤240m)', pattern: '█' },
+            { color: '#ffc400', label: '4–8h wavefront (≤480m)', pattern: '█' },
+            { color: '#ffe58a', label: '8–12h wavefront (≤720m)', pattern: '█' },
           ].map(({ color, label, pattern }) => (
             <div key={label} className="flex items-center gap-2">
               <span style={{ color }} className="text-xs leading-none" aria-hidden="true">
@@ -112,10 +118,6 @@ export function MapWorkspace({
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#2ecc71] flex-shrink-0" />
               <span className="text-[10px] text-[#8b98a9]">Evacuate</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#f5a524] flex-shrink-0" />
-              <span className="text-[10px] text-[#8b98a9]">Depart Soon</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#ff3b30] flex-shrink-0" />

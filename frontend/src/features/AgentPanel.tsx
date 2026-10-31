@@ -5,14 +5,14 @@
 
 import { Panel } from '@/components/Panel';
 import { EmptyState } from '@/components/EmptyState';
-import type { TraceEntry } from '@/types';
+import type { TraceStepModel } from '@/types';
 
 interface AgentPanelProps {
   isMonitoring: boolean;
   onToggleMonitoring: () => void;
   lastCheck?: string;
   currentStage?: string;
-  trace?: TraceEntry[];
+  trace?: TraceStepModel[];
   briefing?: string;
 }
 
@@ -92,24 +92,44 @@ export function AgentPanel({
             <p className="text-[10px] text-[#657787] uppercase tracking-widest mb-1.5">
               Recent Activity
             </p>
-            <ul className="flex flex-col gap-1" aria-label="Agent trace">
-              {recentTrace.map((entry, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-[11px]">
-                  <span
-                    className={`mt-0.5 flex-shrink-0 ${
-                      entry.level === 'ERROR'
-                        ? 'text-[#ff3b30]'
-                        : entry.level === 'WARN'
-                        ? 'text-[#f5a524]'
-                        : 'text-[#657787]'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    ▸
-                  </span>
-                  <span className="text-[#8b98a9] leading-relaxed">{entry.message}</span>
-                </li>
-              ))}
+            <ul className="flex flex-col gap-1.5" aria-label="Agent trace">
+              {recentTrace.map((entry, i) => {
+                const isErr = entry.status === 'error';
+                const isDone = entry.status === 'ok' || entry.status === 'done';
+                return (
+                  <li key={i} className="flex items-start gap-1.5 text-[11px]">
+                    <span
+                      className={`mt-0.5 flex-shrink-0 ${
+                        isErr
+                          ? 'text-[#ff3b30]'
+                          : isDone
+                          ? 'text-[#2ecc71]'
+                          : 'text-[#f5a524]'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      ▸
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[#e6edf3] font-medium truncate">
+                          {entry.step}
+                        </span>
+                        {entry.duration_ms !== undefined && (
+                          <span className="text-[10px] text-[#657787] font-mono flex-shrink-0">
+                            {Math.round(entry.duration_ms)}ms
+                          </span>
+                        )}
+                      </div>
+                      {entry.note && (
+                        <p className="text-[10px] text-[#8b98a9] truncate mt-0.5">
+                          {entry.note}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -117,4 +137,3 @@ export function AgentPanel({
     </Panel>
   );
 }
-
