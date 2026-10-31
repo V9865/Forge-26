@@ -8,7 +8,7 @@
  * - Prevents horizontal overflow across all viewports down to 390px.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TopBar } from '@/layouts/TopBar';
 import { MapWorkspace } from '@/map/MapWorkspace';
 import { FireIntelligencePanel } from '@/features/FireIntelligencePanel';
@@ -21,6 +21,7 @@ import { BriefingPanel } from '@/features/BriefingPanel';
 import { ProvenancePanel } from '@/features/ProvenancePanel';
 import { ValidationPanel } from '@/features/ValidationPanel';
 import { useJobPoller } from '@/hooks/useJobPoller';
+import { useMonitor } from '@/hooks/useMonitor';
 import { getClusters, postPlan, ApiClientError } from '@/api/client';
 import type {
   AOIModel,
@@ -101,13 +102,60 @@ export function AppLayout() {
 
   // Evacuation & Monitoring states
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [jobSource, setJobSource] = useState<'MANUAL' | 'MONITOR' | null>(null);
+  const [boundClusterId, setBoundClusterId] = useState<string | null>(null);
+
+  // Monitor identity and baseline refs
+  const hasHydratedBaselineRef = useRef(false);
+  const lastConsumedMonitorJobIdRef = useRef<string | null>(null);
+  const pendingMonitorJobIdRef = useRef<string | null>(null);
+
+  // Real autonomous background monitor hook
+  const {
+    status: monitorStatus,
+    isEnabled: isMonitoring,
+    isLoading: isMonitorLoading,
+    isToggling: isMonitorToggling,
+    error: monitorError,
+    enable: enableMonitor,
+    disable: disableMonitor,
+  } = useMonitor();
+
+  // Unified lock condition across controls during monitor sync, run, or toggle
+  const isMonitorLocked = isMonitorLoading || isMonitoring || isMonitorToggling;
+
+  const monitorLockReason = useMemo(() => {
+    if (isMonitorLoading) {
+      return 'Synchronizing autonomous monitor state with backend…';
+    }
+    if (isMonitorToggling) {
+      return 'Updating autonomous monitor state…';
+    }
+    if (isMonitoring) {
+      return 'Monitoring is bound to the AOI selected at activation. Stop monitoring before changing the target area.';
+    }
+    return undefined;
+  }, [isMonitorLoading, isMonitorToggling, isMonitoring]);
 
   // Responsive drawer state for screens below 1024px
   const [activeDrawer, setActiveDrawer] = useState<'left' | 'right' | null>(null);
 
   // Real job polling hook
   const { data: jobData } = useJobPoller(currentJobId);
+
+  const isRunning =
+    jobData?.status === 'queued' || jobData?.status === 'running';
+
+  const isManualJobActive =
+    isSubmitting || (jobSource === 'MANUAL' && isRunning);
+
+  // Record initial monitor current_job_id on hydration as baseline; do not adopt old ID
+  useEffect(() => {
+    if (!isMonitorLoading && !hasHydratedBaselineRef.current) {
+      hasHydratedBaselineRef.current = true;
+      lastConsumedMonitorJobIdRef.current = monitorStatus?.current_job_id ?? null;
+    }
+  }, [isMonitorLoading, monitorStatus?.current_job_id]);
 
   // Active cluster lookup
   const selectedCluster = useMemo(
@@ -153,6 +201,7 @@ export function AppLayout() {
 
   // Handle cluster selection from FireIntelligencePanel
   const handleSelectCluster = (cluster: ClusterItem | null) => {
+    if (isMonitorLocked) return;
     if (cluster) {
       setSelectedClusterId(cluster.id);
       setFocusAoi(cluster.suggested_aoi);
@@ -162,9 +211,72 @@ export function AppLayout() {
     }
   };
 
+  // Connect genuinely new monitor-generated jobs to result flow without repeat reloading or overwriting manual runs
+  useEffect(() => {
+    const monitorJobId = monitorStatus?.current_job_id;
+    if (!monitorStatus?.enabled || !monitorJobId) return;
+
+    // Reject stale or previously consumed monitor job IDs
+    if (monitorJobId === lastConsumedMonitorJobIdRef.current) return;
+
+    // Do not adopt before initial hydration baseline is established
+    if (!hasHydratedBaselineRef.current) return;
+
+    // If manual job is active or being viewed, preserve manual job and defer / ignore monitor job
+    if (isManualJobActive || jobSource === 'MANUAL') {
+      pendingMonitorJobIdRef.current = monitorJobId;
+      return;
+    }
+
+    lastConsumedMonitorJobIdRef.current = monitorJobId;
+    {
+      const timer = setTimeout(() => {
+        setCurrentJobId(monitorJobId);
+        setJobSource('MONITOR');
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [monitorStatus?.current_job_id, monitorStatus?.enabled, isManualJobActive, jobSource]);
+
+  // Determine monitor activation readiness and limitations
+  const canEnableMonitor =
+    operatingMode === 'LIVE' &&
+    selectedCluster !== null &&
+    !isMonitorToggling &&
+    !isSubmitting &&
+    !(jobData?.status === 'queued' || jobData?.status === 'running');
+
+  const enableDisabledReason = useMemo(() => {
+    if (operatingMode !== 'LIVE') {
+      return 'Autonomous monitoring supports LIVE mode only. Switch to LIVE mode to monitor active fire clusters.';
+    }
+    if (!selectedCluster) {
+      return 'Please select an active fire cluster to set the monitoring boundary.';
+    }
+    if (isSubmitting || jobData?.status === 'queued' || jobData?.status === 'running') {
+      return 'Cannot toggle monitoring while a simulation job is active.';
+    }
+    return undefined;
+  }, [operatingMode, selectedCluster, isSubmitting, jobData?.status]);
+
+  const handleEnableMonitor = useCallback(async () => {
+    if (!canEnableMonitor || !selectedCluster) return;
+    const res = await enableMonitor(selectedCluster.suggested_aoi);
+    if (res) {
+      setBoundClusterId(selectedCluster.id);
+      setJobSource('MONITOR');
+      lastConsumedMonitorJobIdRef.current = res.current_job_id ?? null;
+      pendingMonitorJobIdRef.current = null;
+    }
+  }, [canEnableMonitor, selectedCluster, enableMonitor]);
+
+  const handleDisableMonitor = useCallback(async () => {
+    await disableMonitor();
+    setBoundClusterId(null);
+    pendingMonitorJobIdRef.current = null;
+  }, [disableMonitor]);
+
   // Determine submission readiness
-  const isRunning =
-    jobData?.status === 'queued' || jobData?.status === 'running';
 
   const canSubmit =
     !isRunning &&
@@ -178,6 +290,7 @@ export function AppLayout() {
     if (!canSubmit) return;
 
     setIsSubmitting(true);
+    setJobSource('MANUAL');
     setSubmissionError(null);
     setSelectedSettlementId(null);
 
@@ -208,6 +321,7 @@ export function AppLayout() {
       };
 
       const res = await postPlan(payload);
+      setJobSource('MANUAL');
       setCurrentJobId(res.job_id);
     } catch (err) {
       const message =
@@ -221,7 +335,7 @@ export function AppLayout() {
   };
 
   const handleModeToggle = () => {
-    if (isSubmitting || isRunning) return;
+    if (isSubmitting || isRunning || isMonitorLocked) return;
     setSelectedSettlementId(null);
     setOperatingMode((m) => {
       const next = m === 'LIVE' ? 'SCENARIO' : 'LIVE';
@@ -233,7 +347,7 @@ export function AppLayout() {
   };
 
   const handleModeChange = (mode: OperatingMode) => {
-    if (isSubmitting || isRunning) return;
+    if (isSubmitting || isRunning || isMonitorLocked) return;
     setSelectedSettlementId(null);
     if (mode === 'LIVE') {
       setScenarioIgnition(null);
@@ -272,6 +386,8 @@ export function AppLayout() {
         error={clustersError}
         onRefresh={fetchClusters}
         detectionCount={selectedCluster?.count}
+        isLocked={isMonitorLocked}
+        lockReason={monitorLockReason}
       />
       <SimulationPanel
         mode={operatingMode}
@@ -294,6 +410,8 @@ export function AppLayout() {
         submissionError={submissionError}
         onDismissError={() => setSubmissionError(null)}
         jobData={jobData}
+        isModeLocked={isMonitorLocked}
+        modeLockedReason={monitorLockReason}
       />
     </>
   );
@@ -335,8 +453,18 @@ export function AppLayout() {
       <ValidationPanel />
 
       <AgentPanel
-        isMonitoring={isMonitoring}
-        onToggleMonitoring={() => setIsMonitoring((v) => !v)}
+
+        monitorStatus={monitorStatus}
+        isMonitorLoading={isMonitorLoading}
+        isMonitorToggling={isMonitorToggling}
+        monitorError={monitorError}
+        onEnableMonitor={handleEnableMonitor}
+        onDisableMonitor={handleDisableMonitor}
+        canEnableMonitor={canEnableMonitor}
+        enableDisabledReason={enableDisabledReason}
+        monitoredClusterId={boundClusterId}
+        currentJobId={currentJobId}
+        jobSource={jobSource}
         currentStage={jobData?.stage ?? undefined}
         trace={jobData?.trace ?? jobData?.result?.trace ?? []}
       />
@@ -349,10 +477,13 @@ export function AppLayout() {
       <TopBar
         operatingMode={operatingMode}
         onModeToggle={handleModeToggle}
-        modeToggleDisabled={isSubmitting || isRunning}
+        modeToggleDisabled={isSubmitting || isRunning || isMonitorLocked}
+        isMonitorLocked={isMonitorLocked}
+        monitorLockReason={monitorLockReason}
+        isMonitoring={isMonitoring}
         jobStatus={jobData?.status ?? null}
         jobStage={jobData?.stage}
-        isMonitoring={isMonitoring}
+
         windOverrideActive={isWindOverrideEnabled}
         selectedArea={selectedCluster ? `Cluster: ${selectedCluster.id.toUpperCase()}` : undefined}
         onToggleLeftDrawer={toggleLeftDrawer}

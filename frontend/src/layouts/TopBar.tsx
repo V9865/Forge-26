@@ -23,6 +23,8 @@ interface TopBarProps {
   jobStatus: JobStatus | null;
   jobStage?: string | null;
   isMonitoring: boolean;
+  isMonitorLocked?: boolean;
+  monitorLockReason?: string;
   windOverrideActive: boolean;
   selectedArea?: string;
   onToggleLeftDrawer?: () => void;
@@ -135,12 +137,16 @@ export function TopBar({
           }`}
           aria-label={
             modeToggleDisabled
-              ? `Operating mode: ${operatingMode} (locked during simulation)`
+              ? isMonitoring
+                ? `Operating mode: ${operatingMode} (locked while autonomous monitoring is active)`
+                : `Operating mode: ${operatingMode} (locked during simulation)`
               : `Operating mode: ${operatingMode}. Click to toggle.`
           }
           title={
             modeToggleDisabled
-              ? 'Mode cannot be changed while a simulation is active'
+              ? isMonitoring
+                ? 'Operating mode locked while autonomous monitoring is active. Stop monitoring first.'
+                : 'Mode cannot be changed while a simulation is active'
               : 'Toggle operating mode'
           }
         >
