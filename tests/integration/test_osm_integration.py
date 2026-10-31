@@ -1,6 +1,5 @@
 """Integration tests for OpenStreetMap real data downloads."""
 
-import os
 import pytest
 
 from core.data.osm import get_road_graph, get_settlements, get_shelters
@@ -10,8 +9,7 @@ from core.models import AOI
 @pytest.mark.integration
 def test_real_osm_download_and_enrichment() -> None:
     """Download a real small bbox graph and assert nodes, travel_time edges, and settlements."""
-    # A small rural/suburban area around Nevada City / Grass Valley, California (~0.05 x 0.05 degrees)
-    aoi = AOI(west=-121.05, south=39.20, east=-121.00, north=39.25)
+    aoi = AOI(west=7.45, south=46.20, east=7.65, north=46.35)
 
     G = get_road_graph(aoi)
     assert len(G.nodes) > 0, "Road graph should have nodes"
@@ -27,7 +25,7 @@ def test_real_osm_download_and_enrichment() -> None:
 
     # Assert settlements extraction
     settlements = get_settlements(aoi, G)
-    assert len(settlements) >= 1, "Should find at least one settlement in Grass Valley area"
+    assert len(settlements) >= 1, "Should find at least one settlement in AOI"
     for s in settlements:
         assert s.name, "Settlement must have a name"
         assert s.node in G.nodes, f"Settlement node {s.node} must exist in road graph"
@@ -35,4 +33,3 @@ def test_real_osm_download_and_enrichment() -> None:
     # Assert shelters extraction
     shelters = get_shelters(aoi)
     assert isinstance(shelters, list)
-
