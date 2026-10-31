@@ -57,3 +57,4 @@ def base_ros(fuel_class: np.ndarray) -> np.ndarray:
         ros[arr == code] = speed
 
     return ros.astype(np.float32)
+
