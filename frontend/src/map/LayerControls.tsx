@@ -16,6 +16,8 @@ const LAYER_CONFIG: Array<{ key: keyof MapLayerVisibility; label: string; icon: 
   { key: 'settlements', label: 'Settlements', icon: '⬡', desc: 'Threatened villages and towns' },
   { key: 'routes', label: 'Safe Routes', icon: '→', desc: 'Fire-aware evacuation paths' },
   { key: 'baselineRoutes', label: 'Baseline Routes', icon: '⇢', desc: 'Naive paths cut by wildfire' },
+  { key: 'wind', label: 'Wind Overlay', icon: '➤', desc: 'Open-Meteo speed & direction vector' },
+  { key: 'terrain', label: 'Terrain Relief', icon: '▲', desc: 'AWS Terrarium DEM hillshade overlay' },
 ];
 
 export function LayerControls({ visibility, onChange }: LayerControlsProps) {
@@ -48,53 +50,54 @@ export function LayerControls({ visibility, onChange }: LayerControlsProps) {
       {/* Layer options menu */}
       {isOpen && (
         <div
-          className="absolute bottom-full mb-2 left-0 w-56 p-2 bg-[#121821]/95 backdrop-blur-md border border-[#162733] rounded shadow-xl flex flex-col gap-1.5 z-20"
+          className="absolute bottom-full mb-2 left-0 w-60 p-2.5 bg-[#121821]/95 backdrop-blur-md border border-[#162733] rounded-lg shadow-2xl flex flex-col gap-1.5 z-20"
           role="dialog"
           aria-label="Map layers"
         >
-          <div className="flex items-center justify-between pb-1 border-b border-[#162733] px-1">
+          <div className="flex items-center justify-between pb-1.5 border-b border-[#162733] px-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9]">
               Map Layers
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-xs text-[#657787] hover:text-[#e6edf3] p-0.5"
+              className="text-xs text-[#657787] hover:text-[#e6edf3] p-0.5 rounded cursor-pointer"
               aria-label="Close layers menu"
             >
               ✕
             </button>
           </div>
 
-          {LAYER_CONFIG.map(({ key, label, icon, desc }) => {
-            const active = visibility[key];
-            return (
-              <label
-                key={key}
-                className="flex items-start gap-2 p-1.5 rounded hover:bg-[#162733]/50 cursor-pointer select-none transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={() => toggle(key)}
-                  className="mt-0.5 rounded border-[#162733] text-[#ff6a2b] focus:ring-[#ff6a2b] bg-[#0b0f14]"
-                />
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-[#8b98a9]" aria-hidden="true">
-                      {icon}
-                    </span>
-                    <span className={`text-xs font-medium ${active ? 'text-[#e6edf3]' : 'text-[#657787]'}`}>
-                      {label}
-                    </span>
+          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+            {LAYER_CONFIG.map(({ key, label, icon, desc }) => {
+              const active = visibility[key];
+              return (
+                <label
+                  key={key}
+                  className="flex items-start gap-2 p-1.5 rounded hover:bg-[#162733]/60 cursor-pointer select-none transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => toggle(key)}
+                    className="mt-0.5 rounded border-[#162733] text-[#ff6a2b] focus:ring-[#ff6a2b] bg-[#0b0f14] accent-[#ff6a2b] cursor-pointer"
+                  />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-[#8b98a9]" aria-hidden="true">
+                        {icon}
+                      </span>
+                      <span className={`text-xs font-medium ${active ? 'text-[#e6edf3]' : 'text-[#657787]'}`}>
+                        {label}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#657787]">{desc}</span>
                   </div>
-                  <span className="text-[10px] text-[#657787]">{desc}</span>
-                </div>
-              </label>
-            );
-          })}
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
-

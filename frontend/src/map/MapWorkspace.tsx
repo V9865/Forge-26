@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { MapView } from './MapView';
 import { LayerControls } from './LayerControls';
 import { TimeSlider } from './TimeSlider';
+import { MapLegend } from './MapLegend';
 import { DEFAULT_LAYER_VISIBILITY, type MapDataProps, type MapLayerVisibility } from './mapTypes';
 import type { ErrorDetail, JobStatus } from '@/types';
 
@@ -34,6 +35,7 @@ export function MapWorkspace({
   flyToTarget = null,
   jobStatus = null,
   jobError = null,
+  windData = null,
 }: MapWorkspaceProps) {
   const [visibility, setVisibility] = useState<MapLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
   const [timeFilterHours, setTimeFilterHours] = useState<number>(12);
@@ -72,6 +74,7 @@ export function MapWorkspace({
           flyToTarget={flyToTarget}
           visibility={visibility}
           timeFilterHours={timeFilterHours}
+          windData={windData}
         />
 
         {/* Floating Ignition Beacon Confirmation */}
@@ -132,62 +135,8 @@ export function MapWorkspace({
         </div>
 
         {/* Map Legend (Bottom Right) */}
-        <div
-          className="absolute bottom-4 right-4 z-10 bg-[#121821]/90 backdrop-blur-md border border-[#162733] rounded p-2.5 flex flex-col gap-1.5 shadow-xl select-none"
-          aria-label="Map legend"
-        >
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pb-0.5 border-b border-[#162733]">
-            Arrival Bands
-          </div>
-          {[
-            { color: '#ff3b30', label: '0–2h wavefront (≤120m)', pattern: '█' },
-            { color: '#ff8a00', label: '2–4h wavefront (≤240m)', pattern: '█' },
-            { color: '#ffc400', label: '4–8h wavefront (≤480m)', pattern: '█' },
-            { color: '#ffe58a', label: '8–12h wavefront (≤720m)', pattern: '█' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
-              <span
-                className="w-3 h-2 rounded-xs shrink-0"
-                style={{ backgroundColor: item.color }}
-                aria-hidden="true"
-              />
-              <span className="truncate">{item.label}</span>
-            </div>
-          ))}
-
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1.5 pb-0.5 border-t border-[#162733]">
-            Settlement Status
-          </div>
-          {[
-            { dotClass: 'bg-[#2ecc71]', label: 'Evacuate' },
-            { dotClass: 'bg-[#ff3b30]', label: 'Trapped' },
-            { dotClass: 'border-2 border-[#8b1a1a]', label: 'Burning' },
-            { dotClass: 'bg-[#657787]', label: 'Not Threatened' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${item.dotClass}`}
-                aria-hidden="true"
-              />
-              <span>{item.label}</span>
-            </div>
-          ))}
-
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1.5 pb-0.5 border-t border-[#162733]">
-            Evacuation Routes
-          </div>
-          {[
-            { lineClass: 'bg-[#2ecc71]', label: 'Fire-aware safe' },
-            { lineClass: 'bg-[#ff3b30]', label: 'Cut by fire' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
-              <span
-                className={`w-3.5 h-0.5 shrink-0 ${item.lineClass}`}
-                aria-hidden="true"
-              />
-              <span>{item.label}</span>
-            </div>
-          ))}
+        <div className="absolute bottom-4 right-4 z-10">
+          <MapLegend />
         </div>
       </div>
     </div>

@@ -660,6 +660,7 @@ export function AppLayout() {
             flyToTarget={flyToTarget}
             jobStatus={jobData?.status ?? null}
             jobError={jobData?.error ?? null}
+            windData={jobData?.result?.wind ?? null}
           />
 
           {rightPanelMode === 'collapsed' && (

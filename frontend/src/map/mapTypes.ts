@@ -9,6 +9,7 @@ import type {
   DetectionsFeatureCollection,
   RoutesFeatureCollection,
   SettlementsFeatureCollection,
+  WindModel,
 } from '@/types';
 
 export interface MapLayerVisibility {
@@ -17,6 +18,8 @@ export interface MapLayerVisibility {
   settlements: boolean;
   routes: boolean;
   baselineRoutes: boolean;
+  wind: boolean;
+  terrain: boolean;
 }
 
 export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
@@ -25,6 +28,8 @@ export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   settlements: true,
   routes: true,
   baselineRoutes: true,
+  wind: true,
+  terrain: false, // Default off to preserve sleek dark vector look, toggleable
 };
 
 export interface FlyToTarget {
@@ -41,6 +46,7 @@ export interface MapDataProps {
   settlements?: SettlementsFeatureCollection | null;
   routes?: RoutesFeatureCollection | null;
   naiveCutSegments?: CutSegmentsFeatureCollection | null;
+  windData?: WindModel | null;
   selectedSettlementId?: string | null;
   onSelectSettlement?: (settlementId: string | null) => void;
   // Scenario ignition point
