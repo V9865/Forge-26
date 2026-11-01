@@ -152,7 +152,7 @@ export function AppLayout() {
   const [activeDrawer, setActiveDrawer] = useState<'left' | 'right' | null>(null);
 
   // Real job polling hook
-  const { data: jobData } = useJobPoller(currentJobId);
+  const { data: jobData, error: jobPollError } = useJobPoller(currentJobId);
 
   const isRunning =
     jobData?.status === 'queued' || jobData?.status === 'running';
@@ -543,7 +543,8 @@ export function AppLayout() {
       <BriefingPanel
         briefing={jobData?.result?.briefing ?? null}
         warnings={jobData?.result?.warnings ?? []}
-        jobStatus={jobData?.status ?? null}
+        jobStatus={jobData?.status ?? (jobPollError ? 'error' : null)}
+        jobError={jobData?.error?.message ?? jobPollError}
       />
 
       <MetricsSummary metrics={jobData?.result?.metrics ?? null} />
