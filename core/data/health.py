@@ -222,7 +222,7 @@ def check_all() -> Dict[str, Dict[str, Any]]:
         Dict mapping feed_name to {ok: bool, latency_ms: float, detail: str, fetched_at: str}.
     """
     settings = get_settings()
-    timeout = settings.HTTP_TIMEOUT_S
+    timeout = min(4.0, float(settings.HTTP_TIMEOUT_S))
 
     return {
         "firms": _check_firms(timeout_s=timeout),

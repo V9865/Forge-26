@@ -44,6 +44,7 @@ interface SimulationPanelProps {
 }
 
 const PRESET_IGNITIONS = [
+  { name: '🏔️ Valais Forest Corridor', lat: 46.275, lng: 7.550, desc: 'Cached OSM network & settlements' },
   { name: '🌲 Montes de Toledo', lat: 39.55, lng: -4.35, desc: 'Pine & shrubland' },
   { name: '🏞️ Sierra Foothills', lat: 37.85, lng: -120.25, desc: 'Chaparral & oaks' },
   { name: '🌿 Algarve Hills', lat: 37.32, lng: -8.55, desc: 'Eucalyptus mountain belt' },

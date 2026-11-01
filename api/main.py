@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
@@ -156,9 +156,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Core API Routes
 # ---------------------------------------------------------------------------
 
+# In-memory health probe cache (TTL 30s) to guarantee sub-millisecond responses for frontend polling
+_HEALTH_CACHE: Optional[Tuple[HealthResponse, float]] = None
+_HEALTH_CACHE_TTL_S = 30.0
+
+
 @app.get("/api/health", response_model=HealthResponse, tags=["Diagnostics"])
 def get_health() -> HealthResponse:
     """Check health and latency of all upstream external data feeds and LLM providers."""
+    global _HEALTH_CACHE
+    now = time.time()
+    if _HEALTH_CACHE is not None:
+        cached_resp, cached_at = _HEALTH_CACHE
+        if (now - cached_at) < _HEALTH_CACHE_TTL_S:
+            return cached_resp
+
     raw_health = check_all()
     feeds: Dict[str, FeedHealthDetail] = {}
 
@@ -182,7 +194,9 @@ def get_health() -> HealthResponse:
         checked_at=datetime.now(timezone.utc).isoformat(),
     )
 
-    return HealthResponse(feeds=feeds)
+    resp = HealthResponse(feeds=feeds)
+    _HEALTH_CACHE = (resp, now)
+    return resp
 
 
 @app.get("/api/clusters", response_model=List[ClusterItem], tags=["Monitoring"])

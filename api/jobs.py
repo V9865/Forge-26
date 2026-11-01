@@ -346,6 +346,7 @@ class JobManager:
                     mode=req.mode,
                     ignition_point=ign_pt,
                     wind_override=wind_over,
+                    resolution_m=req.resolution_m,
                     bypass_cache=False,
                     on_progress=_update_job_stage,
                 )

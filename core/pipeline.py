@@ -137,6 +137,7 @@ def _compute_input_hash(
     wind_override: Optional[Dict[str, float]],
     evac_params: Optional[EvacParams],
     spread_params: Optional[SpreadParams],
+    resolution_m: Optional[int] = None,
 ) -> str:
     """Generate a SHA-256 fingerprint for identical request caching."""
     tokens = [
@@ -146,6 +147,7 @@ def _compute_input_hash(
         f"wind:{wind_override}" if wind_override else "wind:none",
         f"evac:{evac_params.model_dump()}" if evac_params else "evac:default",
         f"spread:{spread_params.model_dump()}" if spread_params else "spread:default",
+        f"res:{resolution_m}" if resolution_m else "res:default",
     ]
     return hashlib.sha256(";".join(tokens).encode("utf-8")).hexdigest()
 
@@ -198,6 +200,7 @@ def run_pipeline(
     now: Optional[datetime] = None,
     evac_params: Optional[EvacParams] = None,
     spread_params: Optional[SpreadParams] = None,
+    resolution_m: Optional[int] = None,
     bypass_cache: bool = False,
     on_progress: Optional[Callable[[str, float], None]] = None,
 ) -> PipelineResult:
@@ -230,7 +233,7 @@ def run_pipeline(
     _validate_inputs(aoi, mode, ignition_point, wind_override)
 
     # 2. Result Caching (60-second window)
-    input_hash = _compute_input_hash(aoi, mode, ignition_point, wind_override, evac_params, spread_params)
+    input_hash = _compute_input_hash(aoi, mode, ignition_point, wind_override, evac_params, spread_params, resolution_m)
     current_time = time.time()
     if not bypass_cache and input_hash in _RESULT_CACHE:
         cached_result, cached_at = _RESULT_CACHE[input_hash]
@@ -400,9 +403,10 @@ def run_pipeline(
     # STAGE 3: Grid & Environmental Layers
     # ---------------------------------------------------------
     t0 = time.perf_counter()
-    grid = make_grid(aoi, res_m=settings.GRID_RES_M, max_cells=settings.MAX_GRID_CELLS)
-    if grid.res_m > settings.GRID_RES_M:
-        warnings_list.append(f"Grid resolution coarsened from {settings.GRID_RES_M}m to {grid.res_m:.1f}m to meet computation limit.")
+    target_res = resolution_m or settings.GRID_RES_M
+    grid = make_grid(aoi, res_m=target_res, max_cells=settings.MAX_GRID_CELLS)
+    if grid.res_m > target_res:
+        warnings_list.append(f"Grid resolution coarsened from {target_res}m to {grid.res_m:.1f}m to meet computation limit.")
 
     try:
         from core.layers import build_layers

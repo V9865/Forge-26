@@ -31,10 +31,11 @@ from core.models import AOI, ProvenanceRecord, Settlement
 
 logger = logging.getLogger(__name__)
 
-# Overpass API endpoints
+# Overpass API endpoints (Global high-availability mirrors)
 PRIMARY_OVERPASS_URL = "https://overpass-api.de/api"
 ALT_OVERPASS_URL = "https://overpass.kumi.systems/api"
-MIRROR_OVERPASS_URL = "https://overpass.osm.ch/api"
+GLOBAL_OVERPASS_URL = "https://overpass.private.coffee/api"
+SWISS_OVERPASS_URL = "https://overpass.osm.ch/api"
 
 # Cache TTL: 30 days in seconds
 OSM_CACHE_TTL_S = 30 * 24 * 3600
@@ -145,13 +146,14 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
     bbox = _format_bbox_for_osmnx(aoi)
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
 
-    endpoints_to_try = [
-        PRIMARY_OVERPASS_URL,
-        ALT_OVERPASS_URL,
-        MIRROR_OVERPASS_URL,
-    ]
+    is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
+    endpoints_to_try = (
+        [SWISS_OVERPASS_URL, PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL]
+        if is_swiss
+        else [PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL, GLOBAL_OVERPASS_URL]
+    )
     orig_rate_limit = ox.settings.overpass_rate_limit
     ox.settings.overpass_rate_limit = False
 
@@ -279,13 +281,14 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
 
-    endpoints_to_try = [
-        PRIMARY_OVERPASS_URL,
-        ALT_OVERPASS_URL,
-        MIRROR_OVERPASS_URL,
-    ]
+    is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
+    endpoints_to_try = (
+        [SWISS_OVERPASS_URL, PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL]
+        if is_swiss
+        else [PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL, GLOBAL_OVERPASS_URL]
+    )
     orig_rate_limit = ox.settings.overpass_rate_limit
     ox.settings.overpass_rate_limit = False
 
@@ -447,13 +450,14 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
 
-    endpoints_to_try = [
-        PRIMARY_OVERPASS_URL,
-        ALT_OVERPASS_URL,
-        MIRROR_OVERPASS_URL,
-    ]
+    is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
+    endpoints_to_try = (
+        [SWISS_OVERPASS_URL, PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL]
+        if is_swiss
+        else [PRIMARY_OVERPASS_URL, ALT_OVERPASS_URL, GLOBAL_OVERPASS_URL]
+    )
     orig_rate_limit = ox.settings.overpass_rate_limit
     ox.settings.overpass_rate_limit = False
 

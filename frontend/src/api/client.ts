@@ -105,7 +105,7 @@ async function apiFetch<T>(
  * Check backend feed health and LLM availability.
  */
 export async function getHealth(): Promise<HealthResponse> {
-  return apiFetch<HealthResponse>('/api/health', {}, 5_000);
+  return apiFetch<HealthResponse>('/api/health', {}, 15_000);
 }
 
 /**
