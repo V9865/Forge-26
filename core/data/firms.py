@@ -319,11 +319,14 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
                 )
             return resp.content, "NASA FIRMS", masked_url
 
+    # Cluster discovery feeds the LIVE run selector, so do not silently turn
+    # an expired global cache into a current "detected" cluster list. A failed
+    # refresh must surface as FEED_DOWN at the API boundary.
     content_bytes, _ = cached_or_fetch(
         key=cache_key,
         ttl_s=settings.FIRES_TTL_S,
         fetch_fn=_do_fetch,
-        allow_stale=True,
+        allow_stale=False,
     )
 
     detections = parse_firms_csv(
