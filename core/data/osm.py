@@ -145,7 +145,7 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
     bbox = _format_bbox_for_osmnx(aoi)
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = min(10.0, float(settings.HTTP_TIMEOUT_S))
+    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
 
     endpoints_to_try = [
         PRIMARY_OVERPASS_URL,
@@ -279,7 +279,7 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = min(10.0, float(settings.HTTP_TIMEOUT_S))
+    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
 
     endpoints_to_try = [
         PRIMARY_OVERPASS_URL,
@@ -447,7 +447,7 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = min(10.0, float(settings.HTTP_TIMEOUT_S))
+    ox.settings.requests_timeout = int(min(10, float(settings.HTTP_TIMEOUT_S)))
 
     endpoints_to_try = [
         PRIMARY_OVERPASS_URL,

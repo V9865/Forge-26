@@ -373,6 +373,7 @@ export function AppLayout() {
 
   const handleSelectIgnition = (pt: { lat: number; lng: number }) => {
     setScenarioIgnition(pt);
+    setSubmissionError(null);
     const derivedAoi = getScenarioAoi(pt, viewportBounds);
     setFocusAoi(derivedAoi);
   };
@@ -603,7 +604,7 @@ export function AppLayout() {
         {/* ── Center: Map Workspace (full width on tablet & mobile) ─ */}
         <main className="relative flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden" role="main">
           <MapWorkspace
-            detections={jobData?.result?.detections ?? null}
+            detections={operatingMode === 'SCENARIO' ? null : (jobData?.result?.detections ?? null)}
             arrivalBands={jobData?.result?.arrival_bands ?? null}
             settlements={jobData?.result?.settlements ?? null}
             routes={jobData?.result?.routes ?? null}

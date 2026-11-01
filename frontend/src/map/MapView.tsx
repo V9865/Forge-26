@@ -222,15 +222,9 @@ export function MapView({
     const handleMapClick = (e: MapMouseEvent) => {
       if (!isScenarioMode || !onSelectIgnition) return;
 
-      // Ensure click was not on a settlement or interactive feature
-      const interactiveFeatures = map.queryRenderedFeatures(e.point, {
-        layers: ['settlements-circle', 'fire-detections-clusters', 'fire-detections-point'],
-      });
-      if (interactiveFeatures.length > 0) return;
-
       onSelectIgnition({
-        lat: e.lngLat.lat,
-        lng: e.lngLat.lng,
+        lat: Number(e.lngLat.lat.toFixed(5)),
+        lng: Number(e.lngLat.lng.toFixed(5)),
       });
     };
 

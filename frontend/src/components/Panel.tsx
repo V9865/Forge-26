@@ -29,12 +29,12 @@ export function Panel({
 
   return (
     <div
-      className={`flex flex-col bg-[#121821] border border-[#162733] rounded overflow-hidden ${className}`}
+      className={`flex flex-col flex-shrink-0 w-full bg-[#121821] border border-[#162733] rounded-lg overflow-hidden shadow-sm transition-all duration-150 ${className}`}
     >
       {/* Header */}
       <div
         className={`flex items-center gap-2 px-3 py-2 border-b border-[#162733] min-h-[38px] ${
-          collapsible ? 'cursor-pointer select-none' : ''
+          collapsible ? 'cursor-pointer select-none hover:bg-[#162733]/50 transition-colors' : ''
         }`}
         onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
       >
@@ -69,7 +69,7 @@ export function Panel({
 
       {/* Body */}
       {!collapsed && (
-        <div id={bodyId} role="region" aria-label={title} className="flex-1 overflow-auto">
+        <div id={bodyId} role="region" aria-label={title} className="flex-1">
           {children}
         </div>
       )}
