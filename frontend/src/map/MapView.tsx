@@ -63,6 +63,7 @@ export function MapView({
   const popupRef = useRef<Popup | null>(null);
   const scenarioMarkerRef = useRef<Marker | null>(null);
   const hasFallbackTriggeredRef = useRef(false);
+  const styleLoadedRef = useRef(false);
 
   const [mapLoaded, setMapLoaded] = useState(false);
 
@@ -98,32 +99,43 @@ export function MapView({
       });
     };
 
-    map.on('load', () => {
-      setupOperationalLayers(map);
-      setMapLoaded(true);
-      emitBounds();
-    });
+    // MapLibre removes custom sources and layers whenever setStyle() is called.
+    // Register operational layers on every style.load (initial style and fallback).
+    const handleStyleLoad = () => {
+      try {
+        setupOperationalLayers(map);
+        styleLoadedRef.current = true;
+        setMapLoaded(true);
+        emitBounds();
+      } catch (err) {
+        console.error('[EmberRoute Map] Failed to register operational layers:', err);
+      }
+    };
 
-    map.on('moveend', emitBounds);
+    const handleMapError = (e: ErrorEvent) => {
+      const message = e.error?.message?.toLowerCase() ?? '';
+      const styleUrl = DEFAULT_OPENFREEMAP_STYLE.toLowerCase();
+      const isPrimaryStyleError =
+        message.includes('openfreemap') ||
+        message.includes('styles/dark') ||
+        message.includes(styleUrl);
 
-    // Resilient Fallback: If OpenFreeMap style fails (e.g. offline/blocked), fallback to raster style
-    map.on('error', (e: ErrorEvent) => {
-      const isStyleError =
-        e.error &&
-        (e.error.message.includes('openfreemap') ||
-          e.error.message.includes('styles/dark') ||
-          e.error.message.includes('Failed to fetch'));
-
-      if (isStyleError && !hasFallbackTriggeredRef.current && !mapLoaded) {
+      // Do not mistake a later tile/font/GeoJSON error for a basemap style failure.
+      if (isPrimaryStyleError && !hasFallbackTriggeredRef.current && !styleLoadedRef.current) {
         hasFallbackTriggeredRef.current = true;
-        console.warn('[EmberRoute Map] OpenFreeMap style unavailable, switching to fallback raster style');
+        setMapLoaded(false);
+        console.warn('[EmberRoute Map] OpenFreeMap style unavailable; switching to fallback raster style.', e.error);
         try {
           map.setStyle(createFallbackRasterStyle());
-        } catch {
-          // Soft failure
+        } catch (err) {
+          console.error('[EmberRoute Map] Could not activate fallback map style:', err);
         }
       }
-    });
+    };
+
+    map.on('style.load', handleStyleLoad);
+    map.on('moveend', emitBounds);
+    map.on('error', handleMapError);
 
     const resizeObserver = new ResizeObserver(() => {
       map.resize();
@@ -134,6 +146,9 @@ export function MapView({
 
     return () => {
       resizeObserver.disconnect();
+      map.off('style.load', handleStyleLoad);
+      map.off('moveend', emitBounds);
+      map.off('error', handleMapError);
       popupRef.current?.remove();
       scenarioMarkerRef.current?.remove();
       map.remove();
