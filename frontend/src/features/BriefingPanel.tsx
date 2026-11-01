@@ -13,9 +13,10 @@ interface BriefingPanelProps {
   briefing?: BriefingModel | null;
   warnings?: string[];
   jobStatus: JobStatus | null;
+  jobError?: string | null;
 }
 
-export function BriefingPanel({ briefing, warnings = [], jobStatus }: BriefingPanelProps) {
+export function BriefingPanel({ briefing, warnings = [], jobStatus, jobError }: BriefingPanelProps) {
   const isLoading = jobStatus === 'queued' || jobStatus === 'running';
   const isDone = jobStatus === 'done';
   const hasBriefing = Boolean(briefing?.text && briefing.text.trim().length > 0);
@@ -35,9 +36,16 @@ export function BriefingPanel({ briefing, warnings = [], jobStatus }: BriefingPa
       )}
 
       {jobStatus === 'error' && (
-        <div className="p-3 flex items-center gap-2 text-xs text-[#ff3b30]">
-          <span aria-hidden="true">✕</span>
-          Simulation failed. No briefing generated.
+        <div className="p-3 flex flex-col gap-1 text-xs text-[#ff3b30]">
+          <div className="flex items-center gap-2">
+            <span aria-hidden="true">✕</span>
+            Simulation failed. No briefing generated.
+          </div>
+          {jobError && (
+            <p className="pl-4 text-[11px] leading-relaxed text-[#e6edf3] break-words">
+              {jobError}
+            </p>
+          )}
         </div>
       )}
 
