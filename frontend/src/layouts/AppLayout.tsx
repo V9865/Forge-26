@@ -218,6 +218,15 @@ export function AppLayout() {
   // Handle cluster selection from FireIntelligencePanel
   const handleSelectCluster = (cluster: ClusterItem | null) => {
     if (isMonitorLocked) return;
+
+    // A report belongs to the AOI/job that produced it. Clear the previous
+    // result when the operator selects a different detected cluster so an old
+    // briefing is never presented as the report for the new selection.
+    setCurrentJobId(null);
+    setJobSource('MANUAL');
+    setSelectedSettlementId(null);
+    setSubmissionError(null);
+
     if (cluster) {
       setSelectedClusterId(cluster.id);
       setFocusAoi(cluster.suggested_aoi);
