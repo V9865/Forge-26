@@ -315,6 +315,27 @@ def get_assumptions() -> AssumptionsResponse:
     return AssumptionsResponse(text=text)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Silence browser favicon requests with 204 or SVG."""
+    fav = Path(__file__).resolve().parent.parent / "frontend" / "public" / "favicon.svg"
+    if fav.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(fav, media_type="image/svg+xml")
+    return Response(status_code=204)
+
+
+@app.get("/font/{fontstack}/{range_pbf}", include_in_schema=False)
+@app.get("/fonts/{fontstack}/{range_pbf}", include_in_schema=False)
+def font_fallback(fontstack: str, range_pbf: str):
+    """Graceful redirect to MapLibre font CDN to avoid 404 logs."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(
+        url=f"https://demotiles.maplibre.org/font/{fontstack}/{range_pbf}",
+        status_code=307,
+    )
+
+
 @app.get("/api/validation", response_model=ValidationResponse, tags=["Documentation"])
 def get_validation() -> ValidationResponse:
     """Retrieve parsed empirical wildfire spread validation table."""

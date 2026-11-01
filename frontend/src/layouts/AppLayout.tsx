@@ -104,6 +104,18 @@ export function AppLayout() {
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
   const [jobSource, setJobSource] = useState<'MANUAL' | 'MONITOR' | null>(null);
   const [boundClusterId, setBoundClusterId] = useState<string | null>(null);
+  const [rightPanelMode, setRightPanelMode] = useState<'standard' | 'wide' | 'collapsed'>('wide');
+
+  const rightPanelWidthClass = useMemo(() => {
+    switch (rightPanelMode) {
+      case 'wide':
+        return 'w-[480px] xl:w-[540px]';
+      case 'standard':
+        return 'w-84 xl:w-96';
+      case 'collapsed':
+        return 'hidden';
+    }
+  }, [rightPanelMode]);
 
   // Monitor identity and baseline refs
   const hasHydratedBaselineRef = useRef(false);
@@ -582,7 +594,7 @@ export function AppLayout() {
       <div className="relative flex flex-1 min-h-0 w-full overflow-hidden">
         {/* ── Left panel dock (Desktop >= 1024px) ───────────────── */}
         <aside
-          className="hidden lg:flex w-64 xl:w-72 flex-shrink-0 flex-col gap-2 p-2 border-r border-[#162733] overflow-y-auto"
+          className="hidden lg:flex w-72 xl:w-80 flex-shrink-0 flex-col gap-2 p-2 border-r border-[#162733] overflow-y-auto"
           aria-label="Fire intelligence and simulation controls"
         >
           {leftPanelsContent}
@@ -599,11 +611,24 @@ export function AppLayout() {
             selectedSettlementId={selectedSettlementId}
             onSelectSettlement={setSelectedSettlementId}
             scenarioIgnition={operatingMode === 'SCENARIO' ? scenarioIgnition : null}
-            onSelectIgnition={setScenarioIgnition}
+            onSelectIgnition={handleSelectIgnition}
             isScenarioMode={operatingMode === 'SCENARIO'}
             focusAoi={focusAoi}
             onBoundsChange={handleBoundsChange}
+            jobStatus={jobData?.status ?? null}
+            jobError={jobData?.error ?? null}
           />
+
+          {rightPanelMode === 'collapsed' && (
+            <button
+              type="button"
+              onClick={() => setRightPanelMode('wide')}
+              className="hidden lg:flex items-center gap-1.5 absolute top-3 right-3 z-20 px-3 py-1.5 bg-[#121821]/95 backdrop-blur-md border border-[#ff6a2b]/60 hover:border-[#ff6a2b] text-[#e6edf3] text-xs font-semibold rounded-lg shadow-xl transition-all cursor-pointer hover:bg-[#162733]"
+              title="Expand Evacuation Intelligence & Agent Briefing"
+            >
+              <span>◀ Evac & Briefing</span>
+            </button>
+          )}
 
           {/* Floating quick-access drawer pills for tablet & mobile (< 1024px) */}
           <div
@@ -643,9 +668,38 @@ export function AppLayout() {
 
         {/* ── Right panel dock (Desktop >= 1024px) ──────────────── */}
         <aside
-          className="hidden lg:flex w-64 xl:w-72 flex-shrink-0 flex-col gap-2 p-2 border-l border-[#162733] overflow-y-auto"
+          className={`hidden lg:flex ${rightPanelWidthClass} flex-shrink-0 flex-col gap-2 p-2 border-l border-[#162733] overflow-y-auto transition-all duration-150`}
           aria-label="Agent briefing and evacuation intelligence"
         >
+          {/* Header Bar with Width Toggle and Collapse controls */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#090d12] border border-[#162733] rounded-lg shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs">📋</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#e6edf3]">
+                Intelligence & Evacuation
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRightPanelMode((m) => (m === 'wide' ? 'standard' : 'wide'))}
+                className="px-2 py-0.5 text-[10px] font-medium text-[#8b98a9] hover:text-[#e6edf3] bg-[#121821] hover:bg-[#162733] border border-[#162733] rounded transition-colors cursor-pointer"
+                title={rightPanelMode === 'wide' ? 'Switch to standard width (360px)' : 'Expand to wide view (540px)'}
+              >
+                {rightPanelMode === 'wide' ? '⤡ Standard (360px)' : '⤢ Expand (540px)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRightPanelMode('collapsed')}
+                className="w-6 h-5 flex items-center justify-center text-[11px] text-[#8b98a9] hover:text-[#ff3b30] bg-[#121821] hover:bg-[#162733] border border-[#162733] rounded transition-colors cursor-pointer"
+                title="Collapse sidebar for full-screen map"
+                aria-label="Collapse panel"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
           {rightPanelsContent}
         </aside>
 
@@ -665,7 +719,7 @@ export function AppLayout() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="mobile-left-drawer-title"
-          className={`lg:hidden fixed inset-y-0 left-0 z-40 w-72 sm:w-80 max-w-[85vw] bg-[#0b0f14] border-r border-[#162733] shadow-2xl flex flex-col transition-transform duration-200 ease-out ${
+          className={`lg:hidden fixed inset-y-0 left-0 z-40 w-84 sm:w-96 max-w-[92vw] bg-[#0b0f14] border-r border-[#162733] shadow-2xl flex flex-col transition-transform duration-200 ease-out ${
             activeDrawer === 'left' ? 'translate-x-0' : '-translate-x-full'
           }`}
           aria-label="Mobile fire intelligence and simulation drawer"

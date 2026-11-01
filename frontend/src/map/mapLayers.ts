@@ -38,6 +38,7 @@ export const OSM_ATTRIBUTION =
 export function createBaseMapStyle(useFallback = false): StyleSpecification {
   return {
     version: 8,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
       basemap: {
         type: 'raster',

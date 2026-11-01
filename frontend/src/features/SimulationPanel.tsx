@@ -430,13 +430,18 @@ export function SimulationPanel({
         )}
 
         {jobData?.status === 'error' && (
-          <div className="p-2 bg-[#ff3b30]/10 border border-[#ff3b30]/30 rounded text-xs text-[#ff3b30] flex flex-col gap-1">
+          <div className="p-2 bg-[#ff3b30]/10 border border-[#ff3b30]/40 rounded text-xs text-[#ff3b30] flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 font-bold">
-              <span>✕</span> Simulation Failed
+              <span>✕</span> {jobData.error?.code === 'NON_BURNABLE_IGNITION' ? 'Invalid Ignition Location' : 'Simulation Failed'}
             </div>
-            <p className="text-[11px] text-[#e6edf3]">
+            <p className="text-[11px] text-[#e6edf3] leading-relaxed">
               {jobData.error?.message || 'An error occurred during simulation processing.'}
             </p>
+            {jobData.error?.code === 'NON_BURNABLE_IGNITION' && (
+              <div className="pt-1.5 border-t border-[#ff3b30]/20 text-[10px] text-[#f5a524]">
+                💡 Non-combustible surface. Please click a green vegetated area on the map or click a preset above!
+              </div>
+            )}
           </div>
         )}
 
