@@ -285,13 +285,14 @@ def plan_settlements(
         else:
             node_fire_arrivals[n] = float("inf")
 
-    # Cell radius for 300 m neighborhood check
-    radius_cells = max(1, int(math.ceil(300.0 / res_m)))
+    # Spatial threat buffer radius (metres)
+    threat_radius_m = max(300.0, float(evac.safe_dist_m))
+    radius_cells = max(1, int(math.ceil(threat_radius_m / res_m)))
 
     plans: List[SettlementPlan] = []
 
     for s in settlements:
-        # Sample fire arrival within 300 m radius of settlement location
+        # Sample fire arrival within threat radius of settlement location
         r_c, c_c = lonlat_to_rc(grid, s.lon, s.lat)
         r_center = int(round(float(r_c)))
         c_center = int(round(float(c_c)))
@@ -304,19 +305,31 @@ def plan_settlements(
         local_arrivals: List[float] = []
         for r_cand in range(r_min_bound, r_max_bound + 1):
             for c_cand in range(c_min_bound, c_max_bound + 1):
-                # Check spatial distance in metres
-                cell_lon = grid.x0 + (c_cand + 0.5) * res_m
-                cell_lat = grid.y0 - (r_cand + 0.5) * res_m
-                # Approximate distance in metres from center
                 dy = (r_cand - r_center) * res_m
                 dx = (c_cand - c_center) * res_m
-                if (dx * dx + dy * dy) <= (300.0 * 300.0):
+                if (dx * dx + dy * dy) <= (threat_radius_m * threat_radius_m):
                     local_arrivals.append(float(arrival_grid[r_cand, c_cand]))
 
         if local_arrivals:
             fire_arrival_min: Optional[float] = float(np.min(local_arrivals))
         else:
             fire_arrival_min = float("inf")
+
+        # If fire hasn't directly reached spatial buffer, check if egress roads are cut by fire
+        if math.isinf(fire_arrival_min):
+            snapped_node_check = s.node
+            if snapped_node_check is not None and snapped_node_check in G and targets:
+                from core.evac.naive import naive_route, route_is_cut
+                n_path = naive_route(G, snapped_node_check, targets)
+                if n_path and route_is_cut(G, n_path, depart_min=0.0, evac=evac):
+                    cut_fire = min(
+                        (float(G[u][v][k].get("fire_min", float("inf")))
+                         for u, v in zip(n_path[:-1], n_path[1:])
+                         for k in G[u][v]),
+                        default=float("inf")
+                    )
+                    if not math.isinf(cut_fire):
+                        fire_arrival_min = cut_fire
 
         # Classify status
         if math.isinf(fire_arrival_min):
@@ -328,8 +341,9 @@ def plan_settlements(
                     fire_arrival_min=None,
                     depart_by_min=None,
                     route_lonlat=[],
+                    naive_route_lonlat=[],
                     route_travel_min=None,
-                    naive_cut=None,
+                    naive_cut=False,
                     note="No fire threat predicted within simulation horizon.",
                 )
             )

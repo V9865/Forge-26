@@ -496,6 +496,21 @@ def get_overture_settlements(aoi: AOI, G: nx.MultiDiGraph) -> Tuple[List[Settlem
                 note=f"Fallback cached settlements ({len(enc)})",
             )
             return enc, prov
+        try:
+            from core.data.osm import get_settlements
+            osm_s = get_settlements(aoi, G)
+            if osm_s:
+                return osm_s, ProvenanceRecord(
+                    name="overture_places",
+                    source="OpenStreetMap (Fallback)",
+                    url="https://overpass-api.de/api",
+                    fetched_at_utc=now_utc,
+                    ttl_s=30 * 86400,
+                    is_stale=False,
+                    note=f"Retrieved {len(osm_s)} settlements from OSM",
+                )
+        except Exception:
+            pass
         return [], ProvenanceRecord(name="overture_places", source="Overture Maps", url="", fetched_at_utc=now_utc, ttl_s=OVERTURE_CACHE_TTL_S, is_stale=False)
 
     con = _init_duckdb()
@@ -554,6 +569,21 @@ def get_overture_settlements(aoi: AOI, G: nx.MultiDiGraph) -> Tuple[List[Settlem
         if enc:
             prov = ProvenanceRecord(name="overture_places", source="Cached Fallback", url="", fetched_at_utc=now_utc, ttl_s=0, is_stale=True)
             return enc, prov
+        try:
+            from core.data.osm import get_settlements
+            osm_s = get_settlements(aoi, G)
+            if osm_s:
+                return osm_s, ProvenanceRecord(
+                    name="overture_places",
+                    source="OpenStreetMap (Fallback)",
+                    url="https://overpass-api.de/api",
+                    fetched_at_utc=now_utc,
+                    ttl_s=30 * 86400,
+                    is_stale=False,
+                    note=f"Retrieved {len(osm_s)} settlements from OSM",
+                )
+        except Exception:
+            pass
         return [], ProvenanceRecord(name="overture_places", source="Overture Maps", url="", fetched_at_utc=now_utc, ttl_s=OVERTURE_CACHE_TTL_S, is_stale=False)
 
     # Snap to nearest graph nodes & deduplicate within 300m
@@ -638,6 +668,13 @@ def get_overture_shelters(aoi: AOI) -> Tuple[List[Tuple[str, float, float, str]]
         pass
 
     if not files:
+        try:
+            from core.data.osm import get_shelters
+            osm_sh = get_shelters(aoi)
+            if osm_sh:
+                return osm_sh, ProvenanceRecord(name="emergency_shelters", source="OpenStreetMap (Fallback)", url="https://overpass-api.de/api", fetched_at_utc=now_utc, ttl_s=30 * 86400, is_stale=False, note=f"Retrieved {len(osm_sh)} shelters from OSM")
+        except Exception:
+            pass
         return [], ProvenanceRecord(name="emergency_shelters", source="Overture Places", url="", fetched_at_utc=now_utc, ttl_s=OVERTURE_CACHE_TTL_S, is_stale=False, note="0 shelters")
 
     con = _init_duckdb()
@@ -675,6 +712,23 @@ def get_overture_shelters(aoi: AOI) -> Tuple[List[Tuple[str, float, float, str]]
         logger.warning("Overture shelter query failed: %s", exc)
     finally:
         con.close()
+
+    if not shelters:
+        try:
+            from core.data.osm import get_shelters
+            osm_sh = get_shelters(aoi)
+            if osm_sh:
+                return osm_sh, ProvenanceRecord(
+                    name="emergency_shelters",
+                    source="OpenStreetMap (Fallback)",
+                    url="https://overpass-api.de/api",
+                    fetched_at_utc=now_utc,
+                    ttl_s=30 * 86400,
+                    is_stale=False,
+                    note=f"Retrieved {len(osm_sh)} shelters from OSM",
+                )
+        except Exception:
+            pass
 
     prov = ProvenanceRecord(
         name="emergency_shelters",

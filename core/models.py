@@ -184,6 +184,7 @@ class SettlementPlan(BaseModel):
     fire_arrival_min: Optional[float] = None
     depart_by_min: Optional[float] = None
     route_lonlat: List[Tuple[float, float]] = Field(default_factory=list)
+    naive_route_lonlat: List[Tuple[float, float]] = Field(default_factory=list)
     route_travel_min: Optional[float] = None
     naive_cut: Optional[bool] = None
     note: str = ""

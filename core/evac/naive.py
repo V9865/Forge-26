@@ -142,6 +142,9 @@ def compare(
             plan.naive_cut = True
         else:
             plan.naive_cut = route_is_cut(G, naive_path, depart_min=0.0, evac=evac)
+            if plan.naive_cut:
+                from core.evac.planner import _extract_route_lonlat
+                plan.naive_route_lonlat = _extract_route_lonlat(G, naive_path)
 
     # Compute aggregate metrics
     threatened_statuses = {"EVACUATE", "TRAPPED", "ALREADY_BURNING"}

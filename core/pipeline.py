@@ -543,6 +543,7 @@ def run_pipeline(
     except Exception as exc:
         logger.warning("Overture Maps infrastructure provider failed (%s); falling back to OSM / cached graphs", exc)
         try:
+            from core.data.osm import get_road_graph, get_settlements, get_shelters
             G = get_road_graph(aoi)
             if G is not None and len(G.nodes) > 0:
                 settlements = get_settlements(aoi, G)
@@ -550,6 +551,46 @@ def run_pipeline(
         except Exception as osm_exc:
             logger.warning("OSM fallback also failed: %s", osm_exc)
             warnings_list.append(f"Road network unavailable ({exc}); evacuation routing degraded.")
+
+    # Resilient settlement fallback: If Overture places returned 0 settlements but road graph exists, query OSM
+    if G is not None and len(G.nodes) > 0:
+        if not settlements:
+            try:
+                from core.data.osm import get_settlements
+                osm_s = get_settlements(aoi, G)
+                if osm_s:
+                    settlements = osm_s
+                    logger.info("Retrieved %d settlements from OpenStreetMap fallback", len(settlements))
+                    provenance_list.append(ProvenanceRecord(
+                        name="osm_settlements",
+                        source="OpenStreetMap",
+                        url="https://overpass-api.de/api",
+                        fetched_at_utc=ref_time,
+                        ttl_s=30 * 86400,
+                        is_stale=False,
+                        note=f"Retrieved {len(settlements)} settlements from OSM",
+                    ))
+            except Exception as osm_s_exc:
+                logger.warning("OSM settlements fallback query failed: %s", osm_s_exc)
+
+        if not shelters:
+            try:
+                from core.data.osm import get_shelters
+                osm_sh = get_shelters(aoi)
+                if osm_sh:
+                    shelters = osm_sh
+                    logger.info("Retrieved %d shelters from OpenStreetMap fallback", len(shelters))
+                    provenance_list.append(ProvenanceRecord(
+                        name="osm_shelters",
+                        source="OpenStreetMap",
+                        url="https://overpass-api.de/api",
+                        fetched_at_utc=ref_time,
+                        ttl_s=30 * 86400,
+                        is_stale=False,
+                        note=f"Retrieved {len(shelters)} shelters from OSM",
+                    ))
+            except Exception as osm_sh_exc:
+                logger.warning("OSM shelters fallback query failed: %s", osm_sh_exc)
 
     if G is not None and len(G.nodes) == 0:
         warnings_list.append("Remote wilderness / unpopulated terrain: No public drivable roads found in this region.")
