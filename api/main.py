@@ -434,7 +434,9 @@ def get_clusters(hours: int = 48) -> List[ClusterItem]:
 
             cluster_items.append(
                 ClusterItem(
-                    id=f"cluster_{i+1}",
+                    # Stable identity across refreshes; list-position IDs can
+                    # silently point to a different fire after re-ranking.
+                    id=f"cluster_{c_lat:+.4f}_{c_lon:+.4f}",
                     name=name,
                     lat=round(c_lat, 4),
                     lon=round(c_lon, 4),
