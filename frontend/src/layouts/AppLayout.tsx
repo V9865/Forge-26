@@ -190,7 +190,6 @@ export function AppLayout() {
       // Auto-select first cluster if none is selected
       if (items.length > 0 && !selectedClusterId) {
         setSelectedClusterId(items[0].id);
-        setFocusAoi(items[0].suggested_aoi);
       }
     } catch (err) {
       const message =

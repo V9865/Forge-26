@@ -118,8 +118,8 @@ export function MapView({
     const map = new Map({
       container: containerRef.current,
       style: createBaseMapStyle(false),
-      center: [7.5500, 46.2800],
-      zoom: 10.5,
+      center: [-4.0, 39.8],
+      zoom: 5.5,
       pitch: 0,
       bearing: 0,
       attributionControl: { compact: true },

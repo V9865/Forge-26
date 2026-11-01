@@ -10,12 +10,18 @@ import type { StyleSpecification } from 'maplibre-gl';
 
 // ── Basemap tile endpoints ───────────────────────────────────────────────────
 
-export const CARTO_DARK_TILES = [
-  'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-];
+const cartoKey = (import.meta.env.VITE_CARTO_API_KEY as string | undefined)?.trim() || '';
+
+export const CARTO_DARK_TILES = cartoKey
+  ? [
+      `https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
+      `https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
+      `https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
+      `https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
+    ]
+  : [
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ];
 
 export const OSM_FALLBACK_TILES = [
   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
