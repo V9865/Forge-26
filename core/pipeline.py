@@ -518,54 +518,45 @@ def run_pipeline(
     record_stage("simulate_spread", t0)
 
     # ---------------------------------------------------------
-    if on_progress: on_progress("Querying road network (OpenStreetMap)", 0.82)
+    if on_progress: on_progress("Retrieving road infrastructure & settlements (Overture Maps)", 0.82)
     # STAGE 5: Road Graph, Settlements, and Shelters
     # ---------------------------------------------------------
     t0 = time.perf_counter()
     sim_failure = getattr(settings, "SIMULATE_API_FAILURE", "") or os.environ.get("SIMULATE_API_FAILURE", "")
-    if sim_failure == "overpass":
-        raise PipelineError("FEED_DOWN", "Simulated Overpass API failure", {"source": "OpenStreetMap"})
+    if sim_failure in ("overpass", "overture"):
+        raise PipelineError("FEED_DOWN", "Simulated Infrastructure API failure", {"source": "Overture Maps"})
 
     G = None
+    settlements = []
+    shelters = []
+    raw_roads = []
+
     try:
-        G = get_road_graph(aoi)
-    except FeedError as fe:
-        warnings_list.append("OpenStreetMap road network currently unreachable; evacuation routing degraded.")
-        logger.warning("Overpass road network unavailable: %s", fe)
+        from core.data.overture import get_overture_road_graph, get_overture_settlements, get_overture_shelters
+        G, g_prov, raw_roads = get_overture_road_graph(aoi)
+        provenance_list.append(g_prov)
+        if G is not None and len(G.nodes) > 0:
+            settlements, s_prov = get_overture_settlements(aoi, G)
+            provenance_list.append(s_prov)
+            shelters, sh_prov = get_overture_shelters(aoi)
+            provenance_list.append(sh_prov)
     except Exception as exc:
-        warnings_list.append(f"Unexpected failure retrieving OSM road network ({exc}); evacuation routing degraded.")
-        logger.warning("OSM road network failed: %s", exc)
-
-    if G is not None and len(G.nodes) > 0:
+        logger.warning("Overture Maps infrastructure provider failed (%s); falling back to OSM / cached graphs", exc)
         try:
-            settlements = get_settlements(aoi, G)
-        except Exception as exc:
-            warnings_list.append(f"Overpass settlement query failed ({exc}); proceeding with empty settlements.")
-            settlements = []
-        try:
-            shelters = get_shelters(aoi)
-        except Exception as exc:
-            shelters = []
-    else:
-        settlements = []
-        shelters = []
-        if G is not None and len(G.nodes) == 0:
-            warnings_list.append("Remote wilderness / unpopulated terrain: No public drivable roads found in OpenStreetMap for this region. Fire spread is simulated, but evacuation routing requires road infrastructure.")
-        else:
-            warnings_list.append("No drivable roads available in AOI; evacuation routing omitted.")
+            G = get_road_graph(aoi)
+            if G is not None and len(G.nodes) > 0:
+                settlements = get_settlements(aoi, G)
+                shelters = get_shelters(aoi)
+        except Exception as osm_exc:
+            logger.warning("OSM fallback also failed: %s", osm_exc)
+            warnings_list.append(f"Road network unavailable ({exc}); evacuation routing degraded.")
 
-    provenance_list.append(
-        ProvenanceRecord(
-            name="osm_road_network",
-            source="OpenStreetMap",
-            url="https://overpass-api.de/api/interpreter",
-            fetched_at_utc=ref_time,
-            ttl_s=30 * 86400,
-            is_stale=G is None,
-            note=f"Nodes: {len(G.nodes) if G else 0}, Edges: {len(G.edges) if G else 0}, Settlements: {len(settlements)}, Shelters: {len(shelters)}",
-        )
-    )
-    record_stage("ingest_osm_infrastructure", t0)
+    if G is not None and len(G.nodes) == 0:
+        warnings_list.append("Remote wilderness / unpopulated terrain: No public drivable roads found in this region.")
+    elif G is None:
+        warnings_list.append("No drivable road infrastructure available in AOI; evacuation routing omitted.")
+
+    record_stage("ingest_infrastructure", t0)
 
     # ---------------------------------------------------------
     # STAGE 6: Graph Annotation & Target Identification
@@ -641,6 +632,7 @@ def run_pipeline(
         wind=wind,
         spread=spread_result,
         plans=plans,
+        roads=raw_roads,
         metrics=metrics,
         provenance=provenance_list,
         warnings=warnings_list,

@@ -13,6 +13,7 @@
 
 import type { Map } from 'maplibre-gl';
 import { getTerrainLayers } from './layers/TerrainLayer';
+import { getRoadLayers } from './layers/RoadLayer';
 import { getFireSpreadLayers } from './layers/FireSpreadLayer';
 import { getEvacuationRouteLayers } from './layers/EvacuationRouteLayer';
 import { getSettlementLayers } from './layers/SettlementLayer';
@@ -21,7 +22,13 @@ import { getWindLayers } from './layers/WindLayer';
 import { registerGeoJsonSources } from './sources/geoJsonSources';
 import { registerRasterSources } from './sources/rasterSources';
 
-export { DEFAULT_OPENFREEMAP_STYLE, OPENFREEMAP_ATTRIBUTION, createFallbackRasterStyle } from './utils/mapStyle';
+export {
+  DEFAULT_OPENFREEMAP_STYLE,
+  OPENFREEMAP_STYLES,
+  type BasemapStyleKey,
+  OPENFREEMAP_ATTRIBUTION,
+  createFallbackRasterStyle,
+} from './utils/mapStyle';
 export { SOURCES, LAYERS, MAP_FONTS, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './utils/layerConstants';
 
 /**
@@ -35,6 +42,7 @@ export function setupOperationalLayers(map: Map): void {
   // 2. Add layers in bottom-to-top z-index order
   const layerGroups = [
     getTerrainLayers(),
+    getRoadLayers(),
     getFireSpreadLayers(),
     getEvacuationRouteLayers(),
     getSettlementLayers(),

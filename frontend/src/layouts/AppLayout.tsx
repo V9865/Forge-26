@@ -650,6 +650,7 @@ export function AppLayout() {
             settlements={jobData?.result?.settlements ?? null}
             routes={jobData?.result?.routes ?? null}
             naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
+            roads={jobData?.result?.roads ?? null}
             selectedSettlementId={selectedSettlementId}
             onSelectSettlement={handleSelectSettlement}
             scenarioIgnition={operatingMode === 'SCENARIO' ? scenarioIgnition : null}

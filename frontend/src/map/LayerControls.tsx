@@ -18,6 +18,7 @@ const LAYER_CONFIG: Array<{ key: keyof MapLayerVisibility; label: string; icon: 
   { key: 'baselineRoutes', label: 'Baseline Routes', icon: '⇢', desc: 'Naive paths cut by wildfire' },
   { key: 'wind', label: 'Wind Overlay', icon: '➤', desc: 'Open-Meteo speed & direction vector' },
   { key: 'terrain', label: 'Terrain Relief', icon: '▲', desc: 'AWS Terrarium DEM hillshade overlay' },
+  { key: 'roads', label: 'Road Network', icon: '═', desc: 'Overture transportation drivable roads' },
 ];
 
 export function LayerControls({ visibility, onChange }: LayerControlsProps) {

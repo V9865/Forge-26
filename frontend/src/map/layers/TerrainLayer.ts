@@ -8,14 +8,15 @@ export function getTerrainLayers(): AddLayerObject[] {
       type: 'hillshade',
       source: SOURCES.TERRAIN_DEM,
       layout: {
-        visibility: 'visible',
+        visibility: 'none', // Default to hidden so it never blacks out the basemap
       },
       paint: {
         'hillshade-exaggeration': 0.35,
-        'hillshade-shadow-color': '#08080a',
-        'hillshade-highlight-color': '#2a3540',
-        'hillshade-accent-color': '#1a2028',
+        'hillshade-shadow-color': 'rgba(10, 10, 15, 0.5)',
+        'hillshade-highlight-color': 'rgba(255, 255, 255, 0.2)',
+        'hillshade-accent-color': 'rgba(30, 40, 50, 0.3)',
       },
     },
   ];
 }
+

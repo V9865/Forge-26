@@ -17,3 +17,4 @@ export function registerRasterSources(map: Map): void {
     }
   }
 }
+

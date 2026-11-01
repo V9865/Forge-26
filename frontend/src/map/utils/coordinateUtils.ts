@@ -44,3 +44,4 @@ export function cardinalFromDegrees(deg: number): string {
 export function spreadBearingFromWindDir(dirFromDeg: number): number {
   return ((dirFromDeg + 180) % 360 + 360) % 360;
 }
+

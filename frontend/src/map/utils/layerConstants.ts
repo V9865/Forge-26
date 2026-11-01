@@ -11,6 +11,7 @@ export const SOURCES = {
   SCENARIO_IGNITION: 'scenario-ignition',
   WIND: 'wind-indicators',
   TERRAIN_DEM: 'aws-terrarium-dem',
+  ROADS: 'roads-network',
 } as const;
 
 export const LAYERS = {
@@ -46,12 +47,17 @@ export const LAYERS = {
   // Wind Indicators
   WIND_ARROW: 'wind-indicators-arrow',
   WIND_LABEL: 'wind-indicators-label',
+
+  // Transportation Roads
+  ROADS_CASING: 'roads-casing',
+  ROADS_LINE: 'roads-line',
 } as const;
 
-export const MAP_FONTS = ['Noto Sans Bold', 'Noto Sans Regular'];
+export const MAP_FONTS = ['Noto Sans Regular'];
 
 export const DEFAULT_MAP_CENTER: [number, number] = [-4.0, 39.8];
 export const DEFAULT_MAP_ZOOM = 5.5;
 
 export const TERRAIN_TILES_URL =
   'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+

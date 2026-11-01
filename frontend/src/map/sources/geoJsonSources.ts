@@ -62,6 +62,14 @@ export function registerGeoJsonSources(map: Map): void {
       data: emptyFeatureCollection(),
     });
   }
+
+  // 8. Overture Transportation Road Network
+  if (!map.getSource(SOURCES.ROADS)) {
+    map.addSource(SOURCES.ROADS, {
+      type: 'geojson',
+      data: emptyFeatureCollection(),
+    });
+  }
 }
 
 export function updateGeoJsonSource(
@@ -78,3 +86,4 @@ export function updateGeoJsonSource(
     console.warn(`[EmberRoute Map] Failed updating source ${sourceId}:`, err);
   }
 }
+

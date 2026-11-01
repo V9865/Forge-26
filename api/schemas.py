@@ -193,6 +193,7 @@ class PlanResult(BaseModel):
     settlements: Optional[GeoJSONFeatureCollection] = None
     routes: Optional[GeoJSONFeatureCollection] = None
     naive_cut_segments: Optional[GeoJSONFeatureCollection] = None
+    roads: Optional[GeoJSONFeatureCollection] = None
     metrics: Dict[str, Any] = Field(default_factory=dict)
     briefing: Optional[BriefingModel] = None
     provenance: List[ProvenanceModel] = Field(default_factory=list)

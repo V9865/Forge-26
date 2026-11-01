@@ -25,6 +25,7 @@ export function MapWorkspace({
   settlements = null,
   routes = null,
   naiveCutSegments = null,
+  roads = null,
   selectedSettlementId,
   onSelectSettlement,
   scenarioIgnition,
@@ -57,13 +58,14 @@ export function MapWorkspace({
       aria-label="Fire intelligence interactive map"
     >
       {/* MapLibre Canvas View */}
-      <div className="relative flex-1 min-h-0 w-full">
+      <div className="relative flex-1 min-h-0 w-full h-full">
         <MapView
           detections={detections}
           arrivalBands={arrivalBands}
           settlements={settlements}
           routes={routes}
           naiveCutSegments={naiveCutSegments}
+          roads={roads}
           selectedSettlementId={selectedSettlementId}
           onSelectSettlement={onSelectSettlement}
           scenarioIgnition={scenarioIgnition}

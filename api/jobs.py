@@ -21,6 +21,7 @@ from api.geojson import (
     build_naive_cut_segments_geojson,
     build_routes_geojson,
     build_settlements_geojson,
+    build_roads_geojson,
 )
 from api.schemas import (
     AOIModel,
@@ -227,6 +228,7 @@ class JobManager:
         settlements_fc = build_settlements_geojson(res)
         routes_fc = build_routes_geojson(res)
         naive_cut_fc = build_naive_cut_segments_geojson(res)
+        roads_fc = build_roads_geojson(res)
 
         # Briefing synthesis
         facts = build_facts(res)
@@ -301,6 +303,7 @@ class JobManager:
             settlements=settlements_fc,
             routes=routes_fc,
             naive_cut_segments=naive_cut_fc,
+            roads=roads_fc,
             metrics=res.metrics,
             briefing=briefing_model,
             provenance=prov_list,

@@ -117,3 +117,4 @@ export function MapLegend() {
     </div>
   );
 }
+

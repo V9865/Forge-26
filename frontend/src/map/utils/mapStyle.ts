@@ -1,13 +1,21 @@
 import type { StyleSpecification } from 'maplibre-gl';
 
 /**
- * OpenFreeMap vector basemap style URL.
- * Defaults to the official OpenFreeMap dark style: https://tiles.openfreemap.org/styles/dark
- * Configurable via VITE_MAP_STYLE_URL in environment.
+ * OpenFreeMap vector basemap style options.
+ * Defaults to the rich Liberty style with clear topography, roads, and contrast.
  */
+export const OPENFREEMAP_STYLES = {
+  liberty: 'https://tiles.openfreemap.org/styles/liberty',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  bright: 'https://tiles.openfreemap.org/styles/bright',
+  positron: 'https://tiles.openfreemap.org/styles/positron',
+} as const;
+
+export type BasemapStyleKey = keyof typeof OPENFREEMAP_STYLES | 'osm';
+
 export const DEFAULT_OPENFREEMAP_STYLE =
   (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() ||
-  'https://tiles.openfreemap.org/styles/dark';
+  OPENFREEMAP_STYLES.liberty;
 
 export const OPENFREEMAP_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
@@ -43,3 +51,4 @@ export function createFallbackRasterStyle(): StyleSpecification {
     ],
   };
 }
+

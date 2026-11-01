@@ -44,6 +44,26 @@ def build_detections_geojson(result: PipelineResult) -> Dict[str, Any]:
     return {"type": "FeatureCollection", "features": features}
 
 
+def build_roads_geojson(result: PipelineResult) -> Dict[str, Any]:
+    """Convert transportation road segments into a valid GeoJSON FeatureCollection."""
+    raw_roads = getattr(result, "roads", []) or []
+    features: List[Dict[str, Any]] = []
+    for r in raw_roads:
+        if isinstance(r, dict) and r.get("type") == "Feature":
+            geom = r.get("geometry")
+            if geom and "coordinates" in geom:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": geom.get("type", "LineString"),
+                        "coordinates": _round_coords_list(geom.get("coordinates", []), 5),
+                    },
+                    "properties": r.get("properties", {"feature_type": "road"}),
+                })
+    return {"type": "FeatureCollection", "features": features}
+
+
+
 def build_arrival_bands_geojson(spread: Optional[SpreadResult], step_min: int = 30) -> Dict[str, Any]:
     """Extract cumulative vector arrival isochrone polygons using core.fire.bands."""
     if spread is None:
@@ -96,6 +116,26 @@ def build_settlements_geojson(result: PipelineResult) -> Dict[str, Any]:
     return {"type": "FeatureCollection", "features": features}
 
 
+def build_roads_geojson(result: PipelineResult) -> Dict[str, Any]:
+    """Convert transportation road segments into a valid GeoJSON FeatureCollection."""
+    raw_roads = getattr(result, "roads", []) or []
+    features: List[Dict[str, Any]] = []
+    for r in raw_roads:
+        if isinstance(r, dict) and r.get("type") == "Feature":
+            geom = r.get("geometry")
+            if geom and "coordinates" in geom:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": geom.get("type", "LineString"),
+                        "coordinates": _round_coords_list(geom.get("coordinates", []), 5),
+                    },
+                    "properties": r.get("properties", {"feature_type": "road"}),
+                })
+    return {"type": "FeatureCollection", "features": features}
+
+
+
 def build_routes_geojson(result: PipelineResult) -> Dict[str, Any]:
     """Convert calculated evacuation route geometries into a GeoJSON FeatureCollection."""
     features: List[Dict[str, Any]] = []
@@ -119,6 +159,26 @@ def build_routes_geojson(result: PipelineResult) -> Dict[str, Any]:
     return {"type": "FeatureCollection", "features": features}
 
 
+def build_roads_geojson(result: PipelineResult) -> Dict[str, Any]:
+    """Convert transportation road segments into a valid GeoJSON FeatureCollection."""
+    raw_roads = getattr(result, "roads", []) or []
+    features: List[Dict[str, Any]] = []
+    for r in raw_roads:
+        if isinstance(r, dict) and r.get("type") == "Feature":
+            geom = r.get("geometry")
+            if geom and "coordinates" in geom:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": geom.get("type", "LineString"),
+                        "coordinates": _round_coords_list(geom.get("coordinates", []), 5),
+                    },
+                    "properties": r.get("properties", {"feature_type": "road"}),
+                })
+    return {"type": "FeatureCollection", "features": features}
+
+
+
 def build_naive_cut_segments_geojson(result: PipelineResult) -> Dict[str, Any]:
     """Convert naive route segments cut by fire into a GeoJSON FeatureCollection."""
     features: List[Dict[str, Any]] = []
@@ -138,4 +198,24 @@ def build_naive_cut_segments_geojson(result: PipelineResult) -> Dict[str, Any]:
             })
 
     return {"type": "FeatureCollection", "features": features}
+
+
+def build_roads_geojson(result: PipelineResult) -> Dict[str, Any]:
+    """Convert transportation road segments into a valid GeoJSON FeatureCollection."""
+    raw_roads = getattr(result, "roads", []) or []
+    features: List[Dict[str, Any]] = []
+    for r in raw_roads:
+        if isinstance(r, dict) and r.get("type") == "Feature":
+            geom = r.get("geometry")
+            if geom and "coordinates" in geom:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": geom.get("type", "LineString"),
+                        "coordinates": _round_coords_list(geom.get("coordinates", []), 5),
+                    },
+                    "properties": r.get("properties", {"feature_type": "road"}),
+                })
+    return {"type": "FeatureCollection", "features": features}
+
 

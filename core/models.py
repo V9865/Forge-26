@@ -212,6 +212,7 @@ class PipelineResult(BaseModel):
     wind: WindSeries
     spread: SpreadResult
     plans: List[SettlementPlan]
+    roads: List[Dict[str, Any]] = Field(default_factory=list)
     metrics: Dict[str, Any] = Field(default_factory=dict)
     provenance: List[ProvenanceRecord] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)

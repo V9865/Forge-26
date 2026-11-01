@@ -2,6 +2,7 @@
  * EmberRoute — Map types and layer definitions
  */
 
+import type { FeatureCollection } from 'geojson';
 import type {
   AOIModel,
   ArrivalBandsFeatureCollection,
@@ -20,6 +21,7 @@ export interface MapLayerVisibility {
   baselineRoutes: boolean;
   wind: boolean;
   terrain: boolean;
+  roads: boolean;
 }
 
 export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
@@ -30,6 +32,7 @@ export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   baselineRoutes: true,
   wind: true,
   terrain: false, // Default off to preserve sleek dark vector look, toggleable
+  roads: true,
 };
 
 export interface FlyToTarget {
@@ -46,6 +49,7 @@ export interface MapDataProps {
   settlements?: SettlementsFeatureCollection | null;
   routes?: RoutesFeatureCollection | null;
   naiveCutSegments?: CutSegmentsFeatureCollection | null;
+  roads?: FeatureCollection | null;
   windData?: WindModel | null;
   selectedSettlementId?: string | null;
   onSelectSettlement?: (settlementId: string | null) => void;
