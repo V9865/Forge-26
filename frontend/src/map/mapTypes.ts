@@ -27,6 +27,14 @@ export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
   baselineRoutes: true,
 };
 
+export interface FlyToTarget {
+  center: [number, number]; // [lng, lat]
+  zoom?: number;
+  pitch?: number;
+  bearing?: number;
+  timestamp: number;
+}
+
 export interface MapDataProps {
   detections?: DetectionsFeatureCollection | null;
   arrivalBands?: ArrivalBandsFeatureCollection | null;
@@ -42,4 +50,5 @@ export interface MapDataProps {
   // AOI focus & Viewport tracking
   focusAoi?: AOIModel | null;
   onBoundsChange?: (bounds: AOIModel) => void;
+  flyToTarget?: FlyToTarget | null;
 }

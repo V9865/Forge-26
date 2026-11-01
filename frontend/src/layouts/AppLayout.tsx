@@ -30,6 +30,7 @@ import type {
   PlanRequest,
   SimulationResolution,
 } from '@/types';
+import type { FlyToTarget } from '@/map/mapTypes';
 
 /**
  * Derives a safe scenario AOI conforming to backend rules:
@@ -94,6 +95,7 @@ export function AppLayout() {
   const [scenarioIgnition, setScenarioIgnition] = useState<{ lat: number; lng: number } | null>(null);
   const [viewportBounds, setViewportBounds] = useState<AOIModel | null>(null);
   const [focusAoi, setFocusAoi] = useState<AOIModel | null>(null);
+  const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null);
 
   // Wind override state
   const [isWindOverrideEnabled, setIsWindOverrideEnabled] = useState(false);
@@ -235,6 +237,11 @@ export function AppLayout() {
     if (cluster) {
       setSelectedClusterId(cluster.id);
       setFocusAoi(cluster.suggested_aoi);
+      setFlyToTarget({
+        center: [cluster.lon, cluster.lat],
+        zoom: 10.5,
+        timestamp: Date.now(),
+      });
     } else {
       setSelectedClusterId(null);
       setFocusAoi(null);
@@ -390,10 +397,31 @@ export function AppLayout() {
   };
 
   const handleSelectIgnition = (pt: { lat: number; lng: number }) => {
+    setOperatingMode('SCENARIO');
     setScenarioIgnition(pt);
     setSubmissionError(null);
+    setFlyToTarget({
+      center: [pt.lng, pt.lat],
+      zoom: 11.5,
+      timestamp: Date.now(),
+    });
     const derivedAoi = getScenarioAoi(pt, viewportBounds);
     setFocusAoi(derivedAoi);
+  };
+
+  const handleSelectSettlement = (id: string | null) => {
+    setSelectedSettlementId(id);
+    if (id && jobData?.result?.settlements?.features) {
+      const feat = jobData.result.settlements.features.find((f) => f.properties?.id === id);
+      if (feat && feat.geometry?.type === 'Point') {
+        const [lng, lat] = feat.geometry.coordinates;
+        setFlyToTarget({
+          center: [lng, lat],
+          zoom: 12.5,
+          timestamp: Date.now(),
+        });
+      }
+    }
   };
 
   const handleBoundsChange = useCallback((bounds: AOIModel) => {
@@ -550,7 +578,7 @@ export function AppLayout() {
         routes={jobData?.result?.routes ?? null}
         naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
         selectedSettlementId={selectedSettlementId}
-        onSelectSettlement={setSelectedSettlementId}
+        onSelectSettlement={handleSelectSettlement}
         jobStatus={jobData?.status ?? null}
       />
 
@@ -559,7 +587,7 @@ export function AppLayout() {
         routes={jobData?.result?.routes ?? null}
         naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
         selectedSettlementId={selectedSettlementId}
-        onSelectSettlement={setSelectedSettlementId}
+        onSelectSettlement={handleSelectSettlement}
         jobStatus={jobData?.status ?? null}
       />
 
@@ -640,12 +668,13 @@ export function AppLayout() {
             routes={jobData?.result?.routes ?? null}
             naiveCutSegments={jobData?.result?.naive_cut_segments ?? null}
             selectedSettlementId={selectedSettlementId}
-            onSelectSettlement={setSelectedSettlementId}
+            onSelectSettlement={handleSelectSettlement}
             scenarioIgnition={operatingMode === 'SCENARIO' ? scenarioIgnition : null}
             onSelectIgnition={handleSelectIgnition}
             isScenarioMode={operatingMode === 'SCENARIO'}
             focusAoi={focusAoi}
             onBoundsChange={handleBoundsChange}
+            flyToTarget={flyToTarget}
             jobStatus={jobData?.status ?? null}
             jobError={jobData?.error ?? null}
           />

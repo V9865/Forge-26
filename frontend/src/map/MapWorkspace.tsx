@@ -31,6 +31,7 @@ export function MapWorkspace({
   isScenarioMode = false,
   focusAoi = null,
   onBoundsChange,
+  flyToTarget = null,
   jobStatus = null,
   jobError = null,
 }: MapWorkspaceProps) {
@@ -43,7 +44,7 @@ export function MapWorkspace({
     (settlements?.features?.length ?? 0) > 0 ||
     (routes?.features?.length ?? 0) > 0 ||
     (naiveCutSegments?.features?.length ?? 0) > 0 ||
-    (isScenarioMode && Boolean(scenarioIgnition));
+    Boolean(scenarioIgnition);
 
   const hasArrivalBands = (arrivalBands?.features?.length ?? 0) > 0;
 
@@ -68,16 +69,18 @@ export function MapWorkspace({
           isScenarioMode={isScenarioMode}
           focusAoi={focusAoi}
           onBoundsChange={onBoundsChange}
+          flyToTarget={flyToTarget}
           visibility={visibility}
           timeFilterHours={timeFilterHours}
         />
 
         {/* Floating Ignition Beacon Confirmation */}
-        {isScenarioMode && scenarioIgnition && !hasArrivalBands && jobStatus !== 'error' && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 bg-[#121821]/95 backdrop-blur-md border border-[#f5a524]/60 rounded-full shadow-xl pointer-events-auto">
-            <span className="w-2 h-2 rounded-full bg-[#f5a524] animate-ping" />
-            <span className="text-xs text-[#e6edf3] font-medium">
-              Ignition Beacon: <span className="font-mono text-[#f5a524] font-bold">{scenarioIgnition.lat.toFixed(4)}°N, {scenarioIgnition.lng.toFixed(4)}°E</span>
+        {scenarioIgnition && !hasArrivalBands && jobStatus !== 'error' && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3.5 py-1.5 bg-[#121821]/95 backdrop-blur-md border border-[#ff6a2b]/70 rounded-full shadow-xl pointer-events-auto">
+            <span className="w-2 h-2 rounded-full bg-[#ff6a2b] animate-ping" />
+            <span className="text-xs text-[#e6edf3] font-medium flex items-center gap-1.5">
+              <span>🔥 Ignition Beacon:</span>
+              <span className="font-mono text-[#ff6a2b] font-bold">{scenarioIgnition.lat.toFixed(4)}°N, {scenarioIgnition.lng.toFixed(4)}°E</span>
             </span>
           </div>
         )}
@@ -106,11 +109,11 @@ export function MapWorkspace({
         {!hasData && !jobError && (
           <div className="absolute top-14 left-1/2 -translate-x-1/2 pointer-events-none z-10 px-3 py-1.5 bg-[#121821]/80 backdrop-blur-md border border-[#162733] rounded text-center max-w-sm shadow-lg">
             <p className="text-xs font-medium text-[#e6edf3]">
-              {isScenarioMode ? 'Scenario Mode Active' : 'Live Operations Ready'}
+              {isScenarioMode ? '🔥 Scenario Mode Active' : 'Live Operations Ready'}
             </p>
             <p className="text-[11px] text-[#8b98a9] mt-0.5">
               {isScenarioMode
-                ? 'Click anywhere on the map to place an ignition point.'
+                ? 'Click anywhere on the map or choose a Preset to place the ignition beacon.'
                 : 'Select an active fire cluster or run a simulation to load spread wavefronts.'}
             </p>
           </div>
@@ -141,47 +144,50 @@ export function MapWorkspace({
             { color: '#ff8a00', label: '2–4h wavefront (≤240m)', pattern: '█' },
             { color: '#ffc400', label: '4–8h wavefront (≤480m)', pattern: '█' },
             { color: '#ffe58a', label: '8–12h wavefront (≤720m)', pattern: '█' },
-          ].map(({ color, label }) => (
-            <div key={label} className="flex items-center gap-2 text-[10px]">
-              <span className="inline-block w-3 h-2 rounded-xs" style={{ backgroundColor: color }} />
-              <span className="text-[10px] text-[#8b98a9] font-mono">{label}</span>
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
+              <span
+                className="w-3 h-2 rounded-xs shrink-0"
+                style={{ backgroundColor: item.color }}
+                aria-hidden="true"
+              />
+              <span className="truncate">{item.label}</span>
             </div>
           ))}
 
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1 pb-0.5 border-b border-[#162733]">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1.5 pb-0.5 border-t border-[#162733]">
             Settlement Status
           </div>
           {[
-            { color: '#2ecc71', label: 'Evacuate' },
-            { color: '#ff3b30', label: 'Trapped' },
-            { color: '#ffffff', label: 'Burning', ring: true },
-            { color: '#657787', label: 'Not Threatened' },
-          ].map(({ color, label, ring }) => (
-            <div key={label} className="flex items-center gap-2 text-[10px]">
-              {ring ? (
-                <span className="inline-block w-2.5 h-2.5 rounded-full border border-white bg-transparent" />
-              ) : (
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-              )}
-              <span className="text-[10px] text-[#8b98a9]">{label}</span>
+            { dotClass: 'bg-[#2ecc71]', label: 'Evacuate' },
+            { dotClass: 'bg-[#ff3b30]', label: 'Trapped' },
+            { dotClass: 'border-2 border-[#8b1a1a]', label: 'Burning' },
+            { dotClass: 'bg-[#657787]', label: 'Not Threatened' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${item.dotClass}`}
+                aria-hidden="true"
+              />
+              <span>{item.label}</span>
             </div>
           ))}
 
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1 pb-0.5 border-b border-[#162733]">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8b98a9] pt-1.5 pb-0.5 border-t border-[#162733]">
             Evacuation Routes
           </div>
-          <div className="flex items-center gap-2 text-[10px]">
-            <span className="text-[#2ecc71] text-xs font-bold leading-none" aria-hidden="true">
-              —
-            </span>
-            <span className="text-[10px] text-[#8b98a9]">Fire-aware safe</span>
-          </div>
-          <div className="flex items-center gap-2 text-[10px]">
-            <span className="text-[#ff3b30] text-xs font-bold leading-none" aria-hidden="true">
-              —
-            </span>
-            <span className="text-[10px] text-[#8b98a9]">Cut by fire</span>
-          </div>
+          {[
+            { lineClass: 'bg-[#2ecc71]', label: 'Fire-aware safe' },
+            { lineClass: 'bg-[#ff3b30]', label: 'Cut by fire' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-[10px] text-[#8b98a9]">
+              <span
+                className={`w-3.5 h-0.5 shrink-0 ${item.lineClass}`}
+                aria-hidden="true"
+              />
+              <span>{item.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

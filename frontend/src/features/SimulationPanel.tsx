@@ -233,18 +233,36 @@ export function SimulationPanel({
                 Preset Scenarios (1-Click Test):
               </span>
               <div className="grid grid-cols-1 gap-1">
-                {PRESET_IGNITIONS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => onSelectIgnition?.({ lat: preset.lat, lng: preset.lng })}
-                    disabled={isSubmitting || isRunning}
-                    className="flex items-center justify-between px-2 py-1.5 bg-[#121821] hover:bg-[#162733] border border-[#162733] hover:border-[#f5a524]/50 rounded text-left transition-colors cursor-pointer"
-                  >
-                    <span className="text-[11px] text-[#e6edf3] font-medium">{preset.name}</span>
-                    <span className="text-[10px] text-[#8b98a9] font-mono">{preset.desc}</span>
-                  </button>
-                ))}
+                {PRESET_IGNITIONS.map((preset) => {
+                  const isPresetActive =
+                    scenarioIgnition &&
+                    Math.abs(scenarioIgnition.lat - preset.lat) < 0.001 &&
+                    Math.abs(scenarioIgnition.lng - preset.lng) < 0.001;
+
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => onSelectIgnition?.({ lat: preset.lat, lng: preset.lng })}
+                      disabled={isSubmitting || isRunning}
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded text-left transition-all cursor-pointer ${
+                        isPresetActive
+                          ? 'bg-[#ff6a2b]/20 border border-[#ff6a2b] shadow-sm'
+                          : 'bg-[#121821] hover:bg-[#162733] border border-[#162733] hover:border-[#f5a524]/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isPresetActive && <span className="text-xs animate-pulse">🔥</span>}
+                        <span className={`text-[11px] font-medium truncate ${isPresetActive ? 'text-[#ff6a2b] font-semibold' : 'text-[#e6edf3]'}`}>
+                          {preset.name}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#8b98a9] font-mono shrink-0 ml-2">
+                        {preset.desc}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div></div>
         )}

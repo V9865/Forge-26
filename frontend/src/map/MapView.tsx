@@ -36,6 +36,7 @@ export function MapView({
   isScenarioMode = false,
   focusAoi = null,
   onBoundsChange,
+  flyToTarget = null,
   visibility,
   timeFilterHours,
 }: MapViewProps) {
@@ -57,29 +58,33 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
 
-    if (isScenarioMode && scenarioIgnition) {
+    if (scenarioIgnition) {
+      const popupHtml = `
+        <div style="font-family: inherit; font-size: 11px; padding: 6px 8px; color: #fff; background: #121821; border-radius: 6px; border: 1.5px solid #ff6a2b; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+          <strong style="color: #ff6a2b; display: flex; align-items: center; gap: 4px;">🔥 Scenario Ignition Point</strong>
+          <div style="font-family: monospace; font-size: 10px; color: #e6edf3; margin-top: 3px;">
+            ${scenarioIgnition.lat.toFixed(4)}°N, ${scenarioIgnition.lng.toFixed(4)}°E
+          </div>
+        </div>
+      `;
+
       if (!scenarioMarkerRef.current) {
         const el = document.createElement('div');
         el.className = 'ember-scenario-ignition-marker';
         el.style.cssText =
-          'position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer;';
+          'width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto;';
         el.innerHTML = `
-          <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 106, 43, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          <div style="position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #ff6a2b; border: 2.5px solid #ffffff; box-shadow: 0 0 16px rgba(255, 106, 43, 0.95); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔥</div>
+          <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 106, 43, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 30px; height: 30px; border-radius: 50%; background: #ff6a2b; border: 2.5px solid #ffffff; box-shadow: 0 0 16px rgba(255, 106, 43, 0.95); display: flex; align-items: center; justify-content: center; font-size: 15px; user-select: none;">🔥</div>
         `;
-        const marker = new Marker({ element: el })
+        const marker = new Marker({ element: el, anchor: 'center' })
           .setLngLat([scenarioIgnition.lng, scenarioIgnition.lat])
-          .setPopup(
-            new Popup({ offset: 25 }).setHTML(
-              `<div style="font-family: inherit; font-size: 11px; padding: 4px 6px; color: #fff; background: #121821; border-radius: 4px; border: 1px solid #ff6a2b;">
-                <strong style="color: #ff6a2b;">Scenario Ignition</strong><br/>${scenarioIgnition.lat.toFixed(4)}°N, ${scenarioIgnition.lng.toFixed(4)}°E
-              </div>`
-            )
-          )
+          .setPopup(new Popup({ offset: 20 }).setHTML(popupHtml))
           .addTo(map);
         scenarioMarkerRef.current = marker;
       } else {
         scenarioMarkerRef.current.setLngLat([scenarioIgnition.lng, scenarioIgnition.lat]);
+        scenarioMarkerRef.current.getPopup()?.setHTML(popupHtml);
       }
     } else {
       if (scenarioMarkerRef.current) {
@@ -87,7 +92,7 @@ export function MapView({
         scenarioMarkerRef.current = null;
       }
     }
-  }, [mapLoaded, isScenarioMode, scenarioIgnition]);
+  }, [mapLoaded, scenarioIgnition]);
 
   useEffect(() => {
     return () => {
@@ -97,6 +102,13 @@ export function MapView({
       }
     };
   }, []);
+
+  // Update canvas cursor whenever scenario mode changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    map.getCanvas().style.cursor = isScenarioMode ? 'crosshair' : '';
+  }, [isScenarioMode, mapLoaded]);
 
   // ── 1. Map Initialization & ResizeObserver ──────────────────────────────────
   useEffect(() => {
@@ -148,51 +160,32 @@ export function MapView({
         hasSwitchedToFallbackRef.current = true;
 
         try {
-          if (map.getLayer('basemap-tiles')) {
-            map.removeLayer('basemap-tiles');
+          const style = map.getStyle();
+          if (style && style.sources && style.sources['basemap']) {
+            map.setStyle(createBaseMapStyle(true));
+            setIsUsingFallback(true);
           }
-          if (map.getSource('basemap')) {
-            map.removeSource('basemap');
-          }
-
-          map.addSource('basemap', {
-            type: 'raster',
-            tiles: OSM_FALLBACK_TILES,
-            tileSize: 256,
-            attribution: OSM_ATTRIBUTION,
-            maxzoom: 19,
-          });
-
-          // Insert back underneath all vector data layers
-          const beforeLayerId = map.getLayer('arrival-bands-fill') ? 'arrival-bands-fill' : undefined;
-          map.addLayer(
-            {
-              id: 'basemap-tiles',
-              type: 'raster',
-              source: 'basemap',
-              minzoom: 0,
-              maxzoom: 22,
-            },
-            beforeLayerId,
-          );
-
-          setIsUsingFallback(true);
         } catch {
-          // Fallback swap completed or style transition in flight
+          // If style update fails, attempt direct tile update
+          try {
+            const source = map.getSource('basemap') as any;
+            if (source && typeof source.setTiles === 'function') {
+              source.setTiles(OSM_FALLBACK_TILES);
+              source.attribution = OSM_ATTRIBUTION;
+              setIsUsingFallback(true);
+            }
+          } catch {
+            // Soft failure, preserve current state
+          }
         }
       }
     });
 
-    // ResizeObserver: auto-call map.resize() on sidebar/drawer toggles and container changes
+    // Handle container resizing (e.g. sidebar toggle or panel collapse)
     const resizeObserver = new ResizeObserver(() => {
-      if (mapRef.current) {
-        mapRef.current.resize();
-      }
+      map.resize();
     });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
+    resizeObserver.observe(containerRef.current);
 
     mapRef.current = map;
 
@@ -268,7 +261,12 @@ export function MapView({
 
     // Click on map to place Scenario Ignition Point
     const handleMapClick = (e: MapMouseEvent) => {
-      if (!isScenarioMode || !onSelectIgnition) return;
+      const interactiveFeatures = map.queryRenderedFeatures(e.point, {
+        layers: ['settlements-circle', 'fire-detections-point', 'fire-detections-clusters'],
+      });
+      if (interactiveFeatures.length > 0) return;
+
+      if (!onSelectIgnition) return;
 
       onSelectIgnition({
         lat: Number(e.lngLat.lat.toFixed(5)),
@@ -325,31 +323,20 @@ export function MapView({
     }
 
     // B. Arrival bands source — Wavefront progressive revelation (0 to 12 hours)
-    // t_min is in minutes from backend: 0-120min (0-2h), 120-240min (2-4h), 240-480min (4-8h), 480-720min (8-12h)
-    // Boundary behavior:
-    // - At 0h (0m): 0 bands appear
-    // - At 2h (120m): 0-120min bands appear
-    // - At 4h (240m): 0-240min bands appear
-    // - At 8h (480m): 0-480min bands appear
-    // - At 12h (720m): all bands appear
     const arrivalSource = map.getSource('arrival-bands') as GeoJSONSource | undefined;
     if (arrivalSource) {
       const maxMinutes = timeFilterHours * 60;
       const rawFeatures = arrivalBands?.features ?? [];
-      // Sort descending by t_min so the outermost (largest t_min) band is
-      // painted first and the innermost (smallest t_min, most urgent) band is
-      // painted last, ensuring it renders on top of wider wavefronts.
-      const filteredFeatures =
-        timeFilterHours > 0
-          ? rawFeatures
-              .filter((f) => {
-                const t = f.properties?.t_min;
-                return typeof t === 'number' && t <= maxMinutes;
-              })
-              .sort(
-                (a, b) => (b.properties?.t_min ?? 0) - (a.properties?.t_min ?? 0),
-              )
-          : [];
+      const sortedFeatures = [...rawFeatures].sort((a, b) => {
+        const tA = (a.properties?.t_min as number) ?? 0;
+        const tB = (b.properties?.t_min as number) ?? 0;
+        return tB - tA;
+      });
+
+      const filteredFeatures = sortedFeatures.filter((f) => {
+        const tMin = (f.properties?.t_min as number) ?? 0;
+        return tMin <= maxMinutes;
+      });
 
       arrivalSource.setData({
         type: 'FeatureCollection',
@@ -357,11 +344,11 @@ export function MapView({
       });
     }
 
-    // C. Settlements source (real FeatureCollection with isSelected flag)
+    // C. Settlements source with isSelected property injection
     const settlementsSource = map.getSource('settlements') as GeoJSONSource | undefined;
     if (settlementsSource) {
       const rawSettlements = settlements?.features ?? [];
-      const features = rawSettlements.map((s) => ({
+      const updatedFeatures = rawSettlements.map((s) => ({
         ...s,
         properties: {
           ...s.properties,
@@ -371,11 +358,11 @@ export function MapView({
 
       settlementsSource.setData({
         type: 'FeatureCollection',
-        features,
+        features: updatedFeatures,
       });
     }
 
-    // D. Safe fire-aware evacuation routes (result.routes FeatureCollection)
+    // D. Safe evacuation routes (result.routes FeatureCollection)
     const routesSource = map.getSource('evacuation-routes') as GeoJSONSource | undefined;
     if (routesSource) {
       routesSource.setData(
@@ -391,13 +378,11 @@ export function MapView({
       );
     }
 
-    // F. Scenario ignition point — strictly isolated:
-    // Only rendered when BOTH isScenarioMode AND scenarioIgnition are present.
-    // Switching to LIVE mode immediately clears the feature collection.
+    // F. Scenario ignition point
     const ignitionSource = map.getSource('scenario-ignition') as GeoJSONSource | undefined;
     if (ignitionSource) {
       const features: GeoJSON.Feature<GeoJSON.Point>[] =
-        isScenarioMode && scenarioIgnition
+        scenarioIgnition
           ? [
               {
                 type: 'Feature',
@@ -447,17 +432,17 @@ export function MapView({
     setVisibility(['evacuation-routes-line', 'evacuation-routes-glow'], visibility.routes);
     setVisibility(['baseline-routes-line'], visibility.baselineRoutes);
 
-    // Scenario beacon layer visibility strictly synchronized with mode and state
+    // Scenario beacon layer visibility
     setVisibility(
       ['scenario-ignition-point', 'scenario-ignition-pulse'],
-      isScenarioMode && Boolean(scenarioIgnition),
+      Boolean(scenarioIgnition),
     );
-  }, [mapLoaded, visibility, isScenarioMode, scenarioIgnition]);
+  }, [mapLoaded, visibility, scenarioIgnition]);
 
   // ── 4b. Focus AOI ─────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapLoaded || !focusAoi) return;
+    if (!map || !mapLoaded || !focusAoi || flyToTarget) return;
     try {
       const b = new LngLatBounds(
         [focusAoi.west, focusAoi.south],
@@ -467,7 +452,41 @@ export function MapView({
     } catch {
       // Ignored if bounds invalid
     }
-  }, [focusAoi, mapLoaded]);
+  }, [focusAoi, mapLoaded, flyToTarget]);
+
+  // ── 4c. Fly To Target (Coordinate button clicks, Presets, Clusters, Settlements) ─
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !flyToTarget) return;
+
+    map.flyTo({
+      center: flyToTarget.center,
+      zoom: flyToTarget.zoom ?? 11,
+      pitch: flyToTarget.pitch ?? 0,
+      bearing: flyToTarget.bearing ?? 0,
+      speed: 1.6,
+      curve: 1.4,
+      essential: true,
+    });
+  }, [flyToTarget, mapLoaded]);
+
+  // ── 4d. Selected Settlement Map Sync (Auto-Popup) ───────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !selectedSettlementId || !settlements?.features) return;
+
+    const feature = settlements.features.find((f) => f.properties?.id === selectedSettlementId);
+    if (!feature || feature.geometry.type !== 'Point') return;
+
+    const coords = feature.geometry.coordinates as [number, number];
+    popupRef.current?.remove();
+    const popup = new Popup({ offset: 12, className: 'ember-map-popup' })
+      .setLngLat(coords)
+      .setDOMContent(createSettlementPopupNode(feature.properties))
+      .addTo(map);
+
+    popupRef.current = popup;
+  }, [selectedSettlementId, settlements, mapLoaded]);
 
   // ── 5. Auto Fit-to-Bounds helper ───────────────────────────────────────────
   const fitToFeatures = () => {
@@ -489,7 +508,7 @@ export function MapView({
       }
     });
 
-    if (isScenarioMode && scenarioIgnition) {
+    if (scenarioIgnition) {
       coords.push([scenarioIgnition.lng, scenarioIgnition.lat]);
     }
 
