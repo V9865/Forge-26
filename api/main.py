@@ -100,7 +100,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize singletons
 
-job_manager = JobManager(max_workers=2)
+job_manager = JobManager()
 
 monitor_manager = MonitorManager(job_manager=job_manager)
 

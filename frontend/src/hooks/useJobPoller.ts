@@ -1,12 +1,14 @@
 /**
- * useJobPoller — polls /api/jobs/{job_id} with adaptive backoff.
+ * useJobPoller — polls /api/jobs/{job_id} with adaptive backoff and transient fault tolerance.
  *
  * Polling rules:
  * - Every 1s for the first 20s.
  * - Every 2s thereafter.
  * - Stops on 'done' or 'error' status.
+ * - Transient HTTP 502/503/504 errors: bounded exponential retries (up to 6 attempts)
+ *   preserving current data without aborting or wiping valid state.
+ * - Non-transient errors (e.g. 404): set status to 'error' and stop polling.
  * - Cleans up on unmount or job change.
- * - Network failures set status to 'error' and clear isPolling.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -20,6 +22,8 @@ interface UseJobPollerResult {
   error: string | null;
 }
 
+const MAX_TRANSIENT_RETRIES = 6;
+
 export function useJobPoller(jobId: string | null): UseJobPollerResult {
   const [data, setData] = useState<JobStatusResponse | null>(null);
   const [status, setStatus] = useState<JobStatus | null>(null);
@@ -30,6 +34,7 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
 
   useEffect(() => {
     let isCancelled = false;
+    let transientRetryCount = 0;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -66,8 +71,10 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
           const result = await getJob(id);
           if (isCancelled) return;
 
+          transientRetryCount = 0;
           setData(result);
           setStatus(result.status);
+          setError(null);
 
           if (result.status === 'done' || result.status === 'error') {
             setIsPolling(false);
@@ -79,6 +86,21 @@ export function useJobPoller(jobId: string | null): UseJobPollerResult {
           scheduleNextPoll(id, delay);
         } catch (err) {
           if (isCancelled) return;
+
+          const isTransient =
+            err instanceof ApiClientError &&
+            (err.httpStatus === 502 ||
+              err.httpStatus === 503 ||
+              err.httpStatus === 504 ||
+              err.code === 'TIMEOUT' ||
+              err.code === 'NETWORK_ERROR');
+
+          if (isTransient && transientRetryCount < MAX_TRANSIENT_RETRIES) {
+            transientRetryCount += 1;
+            const backoffDelay = Math.min(10_000, 1500 * Math.pow(1.4, transientRetryCount));
+            scheduleNextPoll(id, backoffDelay);
+            return;
+          }
 
           const message =
             err instanceof ApiClientError

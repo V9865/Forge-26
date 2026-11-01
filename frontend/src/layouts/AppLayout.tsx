@@ -367,6 +367,7 @@ export function AppLayout() {
   };
 
   const handleModeToggle = () => {
+    setCurrentJobId(null);
     if (isSubmitting || isRunning || isMonitorLocked) return;
     setSelectedSettlementId(null);
     setOperatingMode((m) => {
@@ -379,6 +380,7 @@ export function AppLayout() {
   };
 
   const handleModeChange = (mode: OperatingMode) => {
+    setCurrentJobId(null);
     if (isSubmitting || isRunning || isMonitorLocked) return;
     setSelectedSettlementId(null);
     if (mode === 'LIVE') {
@@ -388,10 +390,15 @@ export function AppLayout() {
   };
 
   const handleClearIgnition = () => {
+    setCurrentJobId(null);
+    setSelectedSettlementId(null);
     setScenarioIgnition(null);
   };
 
   const handleSelectIgnition = (pt: { lat: number; lng: number }) => {
+    setCurrentJobId(null);
+    setSelectedSettlementId(null);
+    setJobSource('MANUAL');
     setOperatingMode('SCENARIO');
     setScenarioIgnition(pt);
     setSubmissionError(null);

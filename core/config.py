@@ -50,6 +50,17 @@ class Settings:
     MAX_GRID_CELLS: int = 400
     HORIZON_MIN: int = 720
 
+    # Worker & Execution Limits (Render 512 MB Concurrency Guard)
+    SIMULATION_MAX_WORKERS: int = 1
+
+    # Native Memory Bounds
+    DUCKDB_MEMORY_LIMIT: str = "128MB"
+    DUCKDB_THREADS: int = 2
+    GDAL_CACHEMAX_MB: int = 32
+
+    # Upstream Fallback Timeout
+    OVERPASS_TIMEOUT_S: int = 10
+
     def __repr__(self) -> str:
         secret_keys = {"FIRMS_MAP_KEY", "GROQ_API_KEY"}
         attrs = []
@@ -69,6 +80,9 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return cached frozen Settings instance loaded from environment."""
+    gdal_cache_mb = int(os.getenv("GDAL_CACHEMAX_MB", "32"))
+    os.environ["GDAL_CACHEMAX"] = str(gdal_cache_mb)
+
     return Settings(
         FIRMS_MAP_KEY=os.getenv("FIRMS_MAP_KEY", ""),
         LLM_CHAIN=os.getenv(
@@ -95,5 +109,9 @@ def get_settings() -> Settings:
         GRID_RES_M=int(os.getenv("GRID_RES_M", "90")),
         MAX_GRID_CELLS=int(os.getenv("MAX_GRID_CELLS", "400")),
         HORIZON_MIN=int(os.getenv("HORIZON_MIN", "720")),
+        SIMULATION_MAX_WORKERS=int(os.getenv("SIMULATION_MAX_WORKERS", "1")),
+        DUCKDB_MEMORY_LIMIT=os.getenv("DUCKDB_MEMORY_LIMIT", "128MB"),
+        DUCKDB_THREADS=int(os.getenv("DUCKDB_THREADS", "2")),
+        GDAL_CACHEMAX_MB=gdal_cache_mb,
+        OVERPASS_TIMEOUT_S=int(os.getenv("OVERPASS_TIMEOUT_S", "10")),
     )
-

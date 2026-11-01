@@ -384,7 +384,7 @@ export function MapView({
     });
 
     // C. Settlements
-    const settlementFeatures = (settlements?.features ?? []).map((f) => ({
+    const settlementFeatures = sanitizeFeatureCollection(settlements).features.map((f) => ({
       ...f,
       properties: {
         ...f.properties,

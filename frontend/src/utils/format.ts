@@ -45,7 +45,7 @@ export function formatArrivalHours(hours: number | null | undefined): string {
 /**
  * Map EvacuationStatus to its display label and colour class.
  */
-export function statusMeta(status: EvacuationStatus): {
+export function statusMeta(status?: EvacuationStatus | string | null): {
   label: string;
   colorClass: string;
   bgClass: string;
@@ -86,6 +86,13 @@ export function statusMeta(status: EvacuationStatus): {
         colorClass: 'text-[#657787]',
         bgClass: 'bg-[#657787]/10',
         icon: '○',
+      };
+    default:
+      return {
+        label: (status as string) || 'UNKNOWN',
+        colorClass: 'text-[#657787]',
+        bgClass: 'bg-[#657787]/10',
+        icon: '?',
       };
   }
 }

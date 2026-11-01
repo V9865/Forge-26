@@ -39,6 +39,14 @@ export function EvacuationRoutesPanel({
   const safeRouteCount = routes?.features?.length ?? 0;
   const cutSegmentCount = naiveCutSegments?.features?.length ?? 0;
 
+  const settlementList = settlements?.features ?? [];
+  const threatenedCount = settlementList.filter(
+    (s) =>
+      s.properties?.status === 'EVACUATE' ||
+      s.properties?.status === 'TRAPPED' ||
+      s.properties?.status === 'ALREADY_BURNING',
+  ).length;
+
   // Matching settlement metadata (holds real route_travel_min from backend)
   const selectedSettlement =
     selectedSettlementId && settlements?.features
@@ -157,10 +165,32 @@ export function EvacuationRoutesPanel({
           )}
 
           {isDone && safeRouteCount === 0 && cutSegmentCount === 0 && (
-            <div className="px-3 py-2">
-              <p className="text-xs text-[#8b98a9] leading-relaxed">
-                No route data available for this simulation.
-              </p>
+            <div className="p-3 border-t border-[#162733]">
+              {threatenedCount === 0 && settlementList.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[#2ecc71] text-[11px] font-semibold">
+                    <span aria-hidden="true">✓</span>
+                    <span>No Evacuation Required</span>
+                  </div>
+                  <p className="text-[11px] text-[#8b98a9] leading-relaxed">
+                    Zero settlements are threatened by the predicted fire spread under current wind conditions. All populated sites remain safe within the simulation horizon.
+                  </p>
+                </div>
+              ) : threatenedCount > 0 ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[#ff3b30] text-[11px] font-semibold">
+                    <span aria-hidden="true">⚠</span>
+                    <span>No Safe Road Egress Available</span>
+                  </div>
+                  <p className="text-[11px] text-[#8b98a9] leading-relaxed">
+                    Threatened settlements are already engulfed or trapped without an unsevered road egress path. Immediate shelter-in-place advised.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-[#8b98a9] leading-relaxed">
+                  No route data available for this simulation.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -168,4 +198,3 @@ export function EvacuationRoutesPanel({
     </Panel>
   );
 }
-

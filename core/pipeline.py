@@ -592,6 +592,9 @@ def run_pipeline(
             except Exception as osm_sh_exc:
                 logger.warning("OSM shelters fallback query failed: %s", osm_sh_exc)
 
+        if not shelters and G is not None and len(G.nodes) > 0:
+            warnings_list.append("Designated civic shelters unavailable from upstream providers; routing directed to safe perimeter boundary exits.")
+
     if G is not None and len(G.nodes) == 0:
         warnings_list.append("Remote wilderness / unpopulated terrain: No public drivable roads found in this region.")
     elif G is None:
@@ -680,7 +683,13 @@ def run_pipeline(
         trace=trace,
     )
 
-    # Save into 60-second in-memory cache
+    # Save into 60-second in-memory cache (pruning expired and capping max size)
+    expired_keys = [k for k, (_, ts) in _RESULT_CACHE.items() if (time.time() - ts) > CACHE_TTL_SECONDS]
+    for k in expired_keys:
+        _RESULT_CACHE.pop(k, None)
+    if len(_RESULT_CACHE) >= 5:
+        oldest_key = min(_RESULT_CACHE, key=lambda k: _RESULT_CACHE[k][1])
+        _RESULT_CACHE.pop(oldest_key, None)
     _RESULT_CACHE[input_hash] = (result, time.time())
 
     return result

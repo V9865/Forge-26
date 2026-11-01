@@ -26,6 +26,8 @@ interface MetricRow {
 const METRIC_ROWS: MetricRow[] = [
   { key: 'n_settlements_total', label: 'Settlements in AOI', format: 'number' },
   { key: 'n_shelters_total', label: 'Shelter Sites', format: 'number' },
+  { key: 'n_graph_nodes', label: 'Road Graph Nodes', format: 'number' },
+  { key: 'n_graph_edges', label: 'Road Graph Edges', format: 'number' },
   { key: 'n_threatened', label: 'Threatened', format: 'number', accentClass: 'text-[#f5a524]' },
   { key: 'n_evacuate', label: 'Can Evacuate', format: 'number', accentClass: 'text-[#2ecc71]' },
   { key: 'n_trapped', label: 'Trapped', format: 'number', accentClass: 'text-[#ff3b30]' },
@@ -51,14 +53,34 @@ function formatMetricValue(value: unknown, format: MetricRow['format']): string 
 }
 
 export function MetricsSummary({ metrics }: MetricsSummaryProps) {
-  if (!metrics) return null;
+  if (!metrics) {
+    return (
+      <Panel title="Evacuation Summary" icon="◈" collapsible defaultCollapsed={false}>
+        <div className="p-3">
+          <p className="text-xs text-[#8b98a9] leading-relaxed">
+            Simulation metrics and infrastructure data will appear here after simulation.
+          </p>
+        </div>
+      </Panel>
+    );
+  }
 
   const visibleRows = METRIC_ROWS.filter((row) => {
     const raw = metrics[row.key];
     return raw !== null && raw !== undefined;
   });
 
-  if (visibleRows.length === 0) return null;
+  if (visibleRows.length === 0) {
+    return (
+      <Panel title="Evacuation Summary" icon="◈" collapsible defaultCollapsed={false}>
+        <div className="p-3">
+          <p className="text-xs text-[#8b98a9] leading-relaxed">
+            No metrics available for the current simulation.
+          </p>
+        </div>
+      </Panel>
+    );
+  }
 
   return (
     <Panel title="Evacuation Summary" icon="◈" collapsible defaultCollapsed={false}>
@@ -87,4 +109,3 @@ export function MetricsSummary({ metrics }: MetricsSummaryProps) {
     </Panel>
   );
 }
-

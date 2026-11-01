@@ -151,6 +151,10 @@ def _init_duckdb() -> duckdb.DuckDBPyConnection:
     # Configure resilient HTTP settings
     con.execute("SET http_timeout=25;")
     con.execute("SET http_retries=3;")
+    # Apply configurable memory and thread bounds
+    settings = get_settings()
+    con.execute(f"SET max_memory='{settings.DUCKDB_MEMORY_LIMIT}';")
+    con.execute(f"SET threads={settings.DUCKDB_THREADS};")
     return con
 
 
@@ -730,13 +734,14 @@ def get_overture_shelters(aoi: AOI) -> Tuple[List[Tuple[str, float, float, str]]
         except Exception:
             pass
 
+    note_text = f"Extracted {len(shelters)} shelter locations" if shelters else "Shelters unavailable from upstream providers (boundary exits preserved)"
     prov = ProvenanceRecord(
         name="emergency_shelters",
-        source=f"Overture Maps Foundation ({release})",
+        source=f"Overture Maps Foundation ({release})" if shelters else "Upstream Shelter Providers",
         url=urls[0] if urls else "https://overturemaps.org",
         fetched_at_utc=now_utc,
         ttl_s=OVERTURE_CACHE_TTL_S,
         is_stale=False,
-        note=f"Extracted {len(shelters)} shelter locations",
+        note=note_text,
     )
     return shelters, prov

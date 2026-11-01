@@ -44,26 +44,6 @@ def build_detections_geojson(result: PipelineResult) -> Dict[str, Any]:
     return {"type": "FeatureCollection", "features": features}
 
 
-def build_roads_geojson(result: PipelineResult) -> Dict[str, Any]:
-    """Convert transportation road segments into a valid GeoJSON FeatureCollection."""
-    raw_roads = getattr(result, "roads", []) or []
-    features: List[Dict[str, Any]] = []
-    for r in raw_roads:
-        if isinstance(r, dict) and r.get("type") == "Feature":
-            geom = r.get("geometry")
-            if geom and "coordinates" in geom:
-                features.append({
-                    "type": "Feature",
-                    "geometry": {
-                        "type": geom.get("type", "LineString"),
-                        "coordinates": _round_coords_list(geom.get("coordinates", []), 5),
-                    },
-                    "properties": r.get("properties", {"feature_type": "road"}),
-                })
-    return {"type": "FeatureCollection", "features": features}
-
-
-
 def build_arrival_bands_geojson(spread: Optional[SpreadResult], step_min: int = 30) -> Dict[str, Any]:
     """Extract cumulative vector arrival isochrone polygons using core.fire.bands."""
     if spread is None:
@@ -140,7 +120,7 @@ def build_routes_geojson(result: PipelineResult) -> Dict[str, Any]:
     features: List[Dict[str, Any]] = []
     for plan in result.plans:
         if plan.route_lonlat and len(plan.route_lonlat) >= 2:
-            coords = [[_round_coord(pt[0]), _round_coord(pt[1])] for pt in plan.route_lonlat]
+            coords = [[round(float(pt[0]), 5), round(float(pt[1]), 5)] for pt in plan.route_lonlat]
             feat = {
                 "type": "Feature",
                 "geometry": {
@@ -165,7 +145,7 @@ def build_naive_cut_segments_geojson(result: PipelineResult) -> Dict[str, Any]:
     for plan in result.plans:
         cut_coords = plan.naive_route_lonlat or []
         if plan.naive_cut and cut_coords and len(cut_coords) >= 2:
-            coords = [[_round_coord(pt[0]), _round_coord(pt[1])] for pt in cut_coords]
+            coords = [[round(float(pt[0]), 5), round(float(pt[1]), 5)] for pt in cut_coords]
             features.append({
                 "type": "Feature",
                 "geometry": {

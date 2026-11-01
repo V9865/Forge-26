@@ -29,6 +29,25 @@ from core.geo import haversine_m, lonlat_to_rc
 from core.models import EvacParams, GridSpec, Settlement, SettlementPlan, SpreadResult
 
 
+def _reconstruct_path(predecessors: Dict[int, Optional[int]], target: int) -> List[int]:
+    """Reconstruct path from source to target using a predecessor map.
+
+    Args:
+        predecessors: Mapping from each visited node to the node that discovered it.
+        target: The terminal node to reconstruct back from.
+
+    Returns:
+        List[int]: Ordered list of node IDs from source to target.
+    """
+    path: List[int] = []
+    node: Optional[int] = target
+    while node is not None:
+        path.append(node)
+        node = predecessors[node]
+    path.reverse()
+    return path
+
+
 def earliest_safe_route(
     G: nx.MultiDiGraph,
     source_node: int,
@@ -73,19 +92,21 @@ def earliest_safe_route(
     if source_node in targets:
         return [source_node], 0.0
 
-    # Priority queue stores tuples: (clock_time, current_node, path)
-    # Using node counter to prevent comparisons between node objects on equal clock times
+    # Priority queue stores tuples: (clock_time, counter, current_node)
+    # Predecessor map avoids copying the path list on every heappush — O(path) → O(1).
     counter = 0
-    pq: List[Tuple[float, int, int, List[int]]] = [(depart_min, counter, source_node, [source_node])]
+    pq: List[Tuple[float, int, int]] = [(depart_min, counter, source_node)]
 
     # Earliest arrival time recorded for each node
     earliest_arrival: Dict[int, float] = {source_node: depart_min}
+    # Predecessor map for path reconstruction
+    predecessors: Dict[int, Optional[int]] = {source_node: None}
 
     best_non_shelter: Optional[Tuple[List[int], float]] = None
     cutoff_time = float("inf")
 
     while pq:
-        clock_time, _, u, path = heapq.heappop(pq)
+        clock_time, _, u = heapq.heappop(pq)
 
         if clock_time > earliest_arrival.get(u, float("inf")):
             continue
@@ -101,10 +122,10 @@ def earliest_safe_route(
 
             if is_shelter:
                 # Prefer shelter target immediately if within cutoff
-                return path, travel_min
+                return _reconstruct_path(predecessors, u), travel_min
 
             if best_non_shelter is None:
-                best_non_shelter = (path, travel_min)
+                best_non_shelter = (_reconstruct_path(predecessors, u), travel_min)
                 # Allow search to continue up to 5 minutes to find a shelter target
                 cutoff_time = clock_time + 5.0
 
@@ -126,8 +147,9 @@ def earliest_safe_route(
                 arrival_at_v = clock_time + best_edge_tt
                 if arrival_at_v < earliest_arrival.get(v, float("inf")):
                     earliest_arrival[v] = arrival_at_v
+                    predecessors[v] = u
                     counter += 1
-                    heapq.heappush(pq, (arrival_at_v, counter, v, path + [v]))
+                    heapq.heappush(pq, (arrival_at_v, counter, v))
 
     return best_non_shelter
 
@@ -274,14 +296,22 @@ def plan_settlements(
     # Compute safe evacuation target nodes
     targets = compute_safe_targets(G, spread, grid, shelters, evac)
 
-    # Precompute fire arrival times at graph nodes
+    # Precompute fire arrival times at graph nodes — vectorised to avoid per-node
+    # pyproj.Transformer instantiation (O(N) → O(1) transformer constructions).
+    _node_ids = list(G.nodes())
+    _node_lons = np.array([float(G.nodes[n]["x"]) for n in _node_ids], dtype=np.float64)
+    _node_lats = np.array([float(G.nodes[n]["y"]) for n in _node_ids], dtype=np.float64)
+    _r_cont, _c_cont = lonlat_to_rc(grid, _node_lons, _node_lats)
+    _r_idx_all = np.round(_r_cont).astype(np.int32)
+    _c_idx_all = np.round(_c_cont).astype(np.int32)
+    _valid = (
+        (_r_idx_all >= 0) & (_r_idx_all < ny)
+        & (_c_idx_all >= 0) & (_c_idx_all < nx_grid)
+    )
     node_fire_arrivals: Dict[int, float] = {}
-    for n, data in G.nodes(data=True):
-        r_c, c_c = lonlat_to_rc(grid, float(data["x"]), float(data["y"]))
-        r_idx = int(round(float(r_c)))
-        c_idx = int(round(float(c_c)))
-        if 0 <= r_idx < ny and 0 <= c_idx < nx_grid:
-            node_fire_arrivals[n] = float(arrival_grid[r_idx, c_idx])
+    for _i, n in enumerate(_node_ids):
+        if _valid[_i]:
+            node_fire_arrivals[n] = float(arrival_grid[_r_idx_all[_i], _c_idx_all[_i]])
         else:
             node_fire_arrivals[n] = float("inf")
 
@@ -302,16 +332,16 @@ def plan_settlements(
         c_min_bound = max(0, c_center - radius_cells)
         c_max_bound = min(nx_grid - 1, c_center + radius_cells)
 
-        local_arrivals: List[float] = []
-        for r_cand in range(r_min_bound, r_max_bound + 1):
-            for c_cand in range(c_min_bound, c_max_bound + 1):
-                dy = (r_cand - r_center) * res_m
-                dx = (c_cand - c_center) * res_m
-                if (dx * dx + dy * dy) <= (threat_radius_m * threat_radius_m):
-                    local_arrivals.append(float(arrival_grid[r_cand, c_cand]))
-
-        if local_arrivals:
-            fire_arrival_min: Optional[float] = float(np.min(local_arrivals))
+        # Vectorised circular patch sampling — avoids nested Python loops.
+        local_patch = arrival_grid[r_min_bound:r_max_bound + 1, c_min_bound:c_max_bound + 1]
+        _rr = np.arange(r_min_bound, r_max_bound + 1, dtype=np.float64)
+        _cc = np.arange(c_min_bound, c_max_bound + 1, dtype=np.float64)
+        _rr_grid, _cc_grid = np.meshgrid(_rr, _cc, indexing="ij")
+        _dy = (_rr_grid - r_center) * res_m
+        _dx = (_cc_grid - c_center) * res_m
+        _circle_mask = (_dx * _dx + _dy * _dy) <= (threat_radius_m * threat_radius_m)
+        if _circle_mask.any():
+            fire_arrival_min: Optional[float] = float(np.min(local_patch[_circle_mask]))
         else:
             fire_arrival_min = float("inf")
 

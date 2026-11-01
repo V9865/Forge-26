@@ -138,34 +138,47 @@ def compute_safe_targets(
 
     safe_targets: Dict[int, Dict[str, Optional[str]]] = {}
 
-    for node_id, data in G.nodes(data=True):
-        lon = float(data["x"])
-        lat = float(data["y"])
-
-        if not burned_any:
-            # If no fire exists, all graph nodes are safe
-            is_safe = True
-        else:
-            r_c, c_c = lonlat_to_rc(grid, lon, lat)
-            r_idx = int(round(float(r_c)))
-            c_idx = int(round(float(c_c)))
-
-            if 0 <= r_idx < ny and 0 <= c_idx < nx_grid:
-                node_fire_min = float(arrival_grid[r_idx, c_idx])
-                node_dist_m = float(dist_to_burn_m[r_idx, c_idx])
-                is_safe = math.isinf(node_fire_min) and (node_dist_m >= safe_dist_m)
-            else:
-                is_safe = False
-
-        if is_safe:
-            # Check if any designated shelter is within 300 m of this node
+    if not burned_any:
+        # If no fire exists, all graph nodes are safe
+        for node_id, data in G.nodes(data=True):
+            lon = float(data["x"])
+            lat = float(data["y"])
             matching_shelter_name: Optional[str] = None
             for sh_name, sh_lat, sh_lon, _ in shelters:
                 if haversine_m(lon, lat, sh_lon, sh_lat) <= 300.0:
                     matching_shelter_name = sh_name
                     break
+            safe_targets[node_id] = {"shelter": matching_shelter_name}
+        return safe_targets
 
+    # Vectorised coordinate conversion — avoids instantiating pyproj.Transformer per node
+    node_ids = list(G.nodes())
+    node_lons = np.array([float(G.nodes[n]["x"]) for n in node_ids], dtype=np.float64)
+    node_lats = np.array([float(G.nodes[n]["y"]) for n in node_ids], dtype=np.float64)
+    r_cont, c_cont = lonlat_to_rc(grid, node_lons, node_lats)
+    r_idx_all = np.round(r_cont).astype(np.int32)
+    c_idx_all = np.round(c_cont).astype(np.int32)
+    in_bounds = (
+        (r_idx_all >= 0) & (r_idx_all < ny)
+        & (c_idx_all >= 0) & (c_idx_all < nx_grid)
+    )
+
+    for i, node_id in enumerate(node_ids):
+        if not in_bounds[i]:
+            continue
+        r_i = int(r_idx_all[i])
+        c_i = int(c_idx_all[i])
+        node_fire_min = float(arrival_grid[r_i, c_i])
+        node_dist_m = float(dist_to_burn_m[r_i, c_i])
+        is_safe = math.isinf(node_fire_min) and (node_dist_m >= safe_dist_m)
+        if is_safe:
+            lon = float(node_lons[i])
+            lat = float(node_lats[i])
+            matching_shelter_name = None
+            for sh_name, sh_lat, sh_lon, _ in shelters:
+                if haversine_m(lon, lat, sh_lon, sh_lat) <= 300.0:
+                    matching_shelter_name = sh_name
+                    break
             safe_targets[node_id] = {"shelter": matching_shelter_name}
 
     return safe_targets
-

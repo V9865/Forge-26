@@ -40,6 +40,7 @@ from api.schemas import (
 from core.agent.briefing import build_facts, template_briefing
 from core.agent.guard import verify
 from core.agent.llm import LLMUnavailable, chat
+from core.config import get_settings
 from core.errors import FeedError
 from core.models import AOI, PipelineResult
 from core.pipeline import NoActiveFireError, PipelineError, run_pipeline
@@ -100,7 +101,9 @@ class JobRecord:
 class JobManager:
     """Thread-safe background job manager."""
 
-    def __init__(self, max_workers: int = 2) -> None:
+    def __init__(self, max_workers: Optional[int] = None) -> None:
+        if max_workers is None:
+            max_workers = get_settings().SIMULATION_MAX_WORKERS
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self.jobs: Dict[str, JobRecord] = {}
         self.hash_to_job: Dict[str, str] = {}

@@ -122,9 +122,16 @@ def compare(
                         and lives rescued by fire-aware routing.
     """
     for plan in plans:
-        # Settlements already burning or trapped without road connections
+        # Settlements already burning or trapped: baseline route is cut.
+        # Extract its naive baseline geometry if a connected road path exists.
         if plan.status == "ALREADY_BURNING":
             plan.naive_cut = True
+            snapped_node = plan.settlement.node
+            if snapped_node is not None and snapped_node in G:
+                naive_path = naive_route(G, snapped_node, targets)
+                if naive_path is not None:
+                    from core.evac.planner import _extract_route_lonlat
+                    plan.naive_route_lonlat = _extract_route_lonlat(G, naive_path)
             continue
 
         if plan.status == "NOT_THREATENED":
@@ -181,4 +188,3 @@ def compare(
         "median_depart_by_min": median_depart,
         "min_depart_by_min": min_depart,
     }
-
