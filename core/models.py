@@ -52,9 +52,9 @@ class AOI(BaseModel):
             raise ValueError(f"west ({self.west}) must be strictly less than east ({self.east})")
         if self.south >= self.north:
             raise ValueError(f"south ({self.south}) must be strictly less than north ({self.north})")
-        if (self.east - self.west) > 0.6:
+        if ((self.east - self.west) - 0.6) > 1e-7:
             raise ValueError(f"AOI width ({self.east - self.west:.4f}°) exceeds maximum allowed 0.6°")
-        if (self.north - self.south) > 0.6:
+        if ((self.north - self.south) - 0.6) > 1e-7:
             raise ValueError(f"AOI height ({self.north - self.south:.4f}°) exceeds maximum allowed 0.6°")
         return self
 

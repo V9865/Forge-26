@@ -15,10 +15,16 @@ import {
   Popup,
   Marker,
   LngLatBounds,
+  setWorkerUrl,
   type MapMouseEvent,
   type GeoJSONSource,
   type ErrorEvent,
 } from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+
+if (typeof window !== 'undefined') {
+  setWorkerUrl(maplibreWorkerUrl);
+}
 import type { Feature, Point } from 'geojson';
 import {
   setupOperationalLayers,

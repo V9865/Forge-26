@@ -283,6 +283,40 @@ def fetch_detections(
     return deduped, prov
 
 
+
+def _split_oversized_clusters(c_dets: List[FireDetection], max_span_deg: float = 0.44) -> List[List[FireDetection]]:
+    """Recursively split a cluster along its longest axis if its spatial span exceeds max_span_deg.
+
+    This ensures each sub-cluster fits safely within the maximum allowable AOI extent (<0.50 deg)
+    without dropping any fire detections.
+    """
+    if not c_dets:
+        return []
+    min_lat = min(d.lat for d in c_dets)
+    max_lat = max(d.lat for d in c_dets)
+    min_lon = min(d.lon for d in c_dets)
+    max_lon = max(d.lon for d in c_dets)
+
+    span_lat = max_lat - min_lat
+    span_lon = max_lon - min_lon
+
+    if span_lat <= max_span_deg and span_lon <= max_span_deg:
+        return [c_dets]
+
+    if span_lon >= span_lat:
+        mid_lon = (min_lon + max_lon) / 2.0
+        part1 = [d for d in c_dets if d.lon <= mid_lon]
+        part2 = [d for d in c_dets if d.lon > mid_lon]
+    else:
+        mid_lat = (min_lat + max_lat) / 2.0
+        part1 = [d for d in c_dets if d.lat <= mid_lat]
+        part2 = [d for d in c_dets if d.lat > mid_lat]
+
+    if not part1 or not part2:
+        return [c_dets]
+
+    return _split_oversized_clusters(part1, max_span_deg) + _split_oversized_clusters(part2, max_span_deg)
+
 def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]]:
     """Scan the global FIRMS endpoint and return top active fire clusters.
 
@@ -369,7 +403,8 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
                         visited.add(neighbor)
                         queue.append(neighbor)
 
-        clusters.append(cluster_dets)
+        sub_clusters = _split_oversized_clusters(cluster_dets, max_span_deg=0.44)
+        clusters.extend(sub_clusters)
 
     # Compute centroid and statistics for each cluster
     cluster_results: List[Dict[str, Any]] = []
@@ -392,18 +427,26 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
         padding_deg = 0.03
 
         def _bounded_axis(values: List[float], center: float, lower: float, upper: float) -> Tuple[float, float]:
-            lo = max(lower, min(values) - padding_deg)
-            hi = min(upper, max(values) + padding_deg)
-            if hi - lo > 0.6:
-                lo = max(lower, center - 0.3)
-                hi = min(upper, center + 0.3)
-            elif hi - lo < 0.2:
-                lo = max(lower, center - 0.1)
-                hi = min(upper, center + 0.1)
+            # Apply padding to encompass detections safely
+            lo = min(values) - padding_deg
+            hi = max(values) + padding_deg
+            # Ensure safe buffer below max allowable extent (0.50 deg limit gives 0.10 deg safety margin under 0.60 limit)
+            if (hi - lo) > 0.50:
+                lo = center - 0.25
+                hi = center + 0.25
+            elif (hi - lo) < 0.20:
+                lo = center - 0.10
+                hi = center + 0.10
+            # Clamp to geographic bounds
+            lo = max(lower, lo)
+            hi = min(upper, hi)
+            # Re-verify width after clamping
+            if (hi - lo) > 0.50:
+                hi = min(upper, lo + 0.50)
             return round(lo, 4), round(hi, 4)
 
         west, east = _bounded_axis([d.lon for d in c_dets], center_lon, -180.0, 180.0)
-        south, north = _bounded_axis([d.lat for d in c_dets], center_lat, -90.0, 90.0)
+        south, north = _bounded_axis([d.lat for d in c_dets], center_lat, -89.0, 89.0)
         suggested_aoi = {
             "west": west,
             "south": south,

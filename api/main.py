@@ -522,7 +522,7 @@ def create_plan_job(plan_req: PlanRequest, request: Request) -> PlanJobResponse:
 
 
 
-    if width_deg > 0.6 or height_deg > 0.6:
+    if ((width_deg - 0.6) > 1e-7) or ((height_deg - 0.6) > 1e-7):
 
         raise HTTPException(
 

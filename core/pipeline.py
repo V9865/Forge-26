@@ -94,9 +94,9 @@ def _validate_inputs(
         raise PipelineError("INVALID_INPUT", f"AOI west ({aoi.west}) must be strictly less than east ({aoi.east}).")
     if aoi.south >= aoi.north:
         raise PipelineError("INVALID_INPUT", f"AOI south ({aoi.south}) must be strictly less than north ({aoi.north}).")
-    if (aoi.east - aoi.west) > 0.6:
+    if ((aoi.east - aoi.west) - 0.6) > 1e-7:
         raise PipelineError("GRID_TOO_LARGE", f"AOI width ({aoi.east - aoi.west:.4f}°) exceeds maximum allowed 0.6°.")
-    if (aoi.north - aoi.south) > 0.6:
+    if ((aoi.north - aoi.south) - 0.6) > 1e-7:
         raise PipelineError("GRID_TOO_LARGE", f"AOI height ({aoi.north - aoi.south:.4f}°) exceeds maximum allowed 0.6°.")
     if not (-180.0 <= aoi.west <= 180.0 and -180.0 <= aoi.east <= 180.0):
         raise PipelineError("INVALID_INPUT", f"AOI longitudes [{aoi.west}, {aoi.east}] out of valid range [-180, 180].")
