@@ -382,12 +382,30 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
             center_lat = sum(d.lat for d in c_dets) / count
             center_lon = sum(d.lon for d in c_dets) / count
 
-        # Suggested AOI: 0.2 x 0.2 degrees centered at centroid
+        # Build the AOI from the detections' actual extent, not only the
+        # centroid. A fixed 0.2-degree box can exclude valid points from a
+        # 0.25-degree cluster bin; the subsequent LIVE fetch would then see
+        # zero detections and refuse to generate a report.
+        padding_deg = 0.03
+
+        def _bounded_axis(values: List[float], center: float, lower: float, upper: float) -> Tuple[float, float]:
+            lo = max(lower, min(values) - padding_deg)
+            hi = min(upper, max(values) + padding_deg)
+            if hi - lo > 0.6:
+                lo = max(lower, center - 0.3)
+                hi = min(upper, center + 0.3)
+            elif hi - lo < 0.2:
+                lo = max(lower, center - 0.1)
+                hi = min(upper, center + 0.1)
+            return round(lo, 4), round(hi, 4)
+
+        west, east = _bounded_axis([d.lon for d in c_dets], center_lon, -180.0, 180.0)
+        south, north = _bounded_axis([d.lat for d in c_dets], center_lat, -90.0, 90.0)
         suggested_aoi = {
-            "west": round(center_lon - 0.1, 4),
-            "south": round(center_lat - 0.1, 4),
-            "east": round(center_lon + 0.1, 4),
-            "north": round(center_lat + 0.1, 4),
+            "west": west,
+            "south": south,
+            "east": east,
+            "north": north,
         }
 
         cluster_results.append({
