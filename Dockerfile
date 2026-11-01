@@ -52,21 +52,21 @@ COPY core/ ./core/
 COPY api/ ./api/
 COPY docs/ ./docs/
 
-# Verify API, core application, and infrastructure providers can be loaded
-RUN python -c "import duckdb, pyarrow; con = duckdb.connect(':memory:'); con.execute('INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;'); print('DuckDB extensions pre-installed!')" && \
-    python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
-
 # Copy built frontend static distribution from Stage 1 into frontend/dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create dedicated non-root user (UID 1000 standard for Hugging Face Spaces)
 RUN useradd -m -u 1000 user && \
-    mkdir -p /tmp/.cache && \
-    chown -R user:user /app /tmp/.cache
+    mkdir -p /tmp/.cache /home/user/.duckdb && \
+    chown -R user:user /app /tmp/.cache /home/user
 
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
+
+# Pre-install and verify DuckDB extensions under the unprivileged runtime user account
+RUN python -c "import duckdb, pyarrow; con = duckdb.connect(':memory:'); con.execute('INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;'); print('DuckDB extensions pre-installed for user!')" && \
+    python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
 
 EXPOSE 7860
 
