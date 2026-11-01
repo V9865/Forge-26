@@ -404,7 +404,10 @@ def get_health() -> HealthResponse:
 def get_clusters(hours: int = 48) -> List[ClusterItem]:
     """Scan and return active global fire clusters from NASA FIRMS."""
     try:
-        raw_clusters = find_active_clusters(hours=max(48, hours), top_n=8)
+        # The FIRMS cluster scanner accepts a 1–24 hour window. Keep the
+        # request within that documented range instead of forcing stale 48h data.
+        scan_hours = max(1, min(24, int(hours)))
+        raw_clusters = find_active_clusters(hours=scan_hours, top_n=8)
         cluster_items: List[ClusterItem] = []
         for i, c in enumerate(raw_clusters):
             c_lat = c.get("center_lat", c.get("lat", 0.0))
@@ -442,8 +445,14 @@ def get_clusters(hours: int = 48) -> List[ClusterItem]:
             )
         return cluster_items
     except Exception as exc:
-        logger.warning("Clusters query failed: %s", exc)
-        return []
+        # A failed NASA feed is not equivalent to a successful scan with zero
+        # detections. Surface the upstream failure so the UI can show an error.
+        logger.exception("NASA FIRMS cluster retrieval failed")
+        raise PipelineError(
+            "FEED_DOWN",
+            f"NASA FIRMS cluster retrieval failed: {exc}",
+            {"source": "NASA FIRMS"},
+        ) from exc
 
 
 
