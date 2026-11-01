@@ -294,6 +294,7 @@ class ClusterItem(BaseModel):
     count: int
     total_frp: float
     suggested_aoi: AOIModel
+    name: Optional[str] = None
 
 
 class AssumptionsResponse(BaseModel):
