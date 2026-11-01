@@ -530,7 +530,7 @@ def run_pipeline(
     try:
         G = get_road_graph(aoi)
     except FeedError as fe:
-        warnings_list.append(f"Road network download failed from Overpass ({fe.message}); evacuation routing degraded.")
+        warnings_list.append("OpenStreetMap road network currently unreachable; evacuation routing degraded.")
         logger.warning("Overpass road network unavailable: %s", fe)
     except Exception as exc:
         warnings_list.append(f"Unexpected failure retrieving OSM road network ({exc}); evacuation routing degraded.")
@@ -549,7 +549,10 @@ def run_pipeline(
     else:
         settlements = []
         shelters = []
-        warnings_list.append("No drivable roads available in AOI; evacuation routing omitted.")
+        if G is not None and len(G.nodes) == 0:
+            warnings_list.append("Remote wilderness / unpopulated terrain: No public drivable roads found in OpenStreetMap for this region. Fire spread is simulated, but evacuation routing requires road infrastructure.")
+        else:
+            warnings_list.append("No drivable roads available in AOI; evacuation routing omitted.")
 
     provenance_list.append(
         ProvenanceRecord(

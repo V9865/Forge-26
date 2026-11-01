@@ -14,8 +14,8 @@ import type {
 interface SimulationPanelProps {
   mode: OperatingMode;
   onModeChange: (mode: OperatingMode) => void;
-  resolution: SimulationResolution;
-  onResolutionChange: (res: SimulationResolution) => void;
+  resolution?: SimulationResolution;
+  onResolutionChange?: (res: SimulationResolution) => void;
   // LIVE mode context
   selectedCluster: ClusterItem | null;
   // SCENARIO mode context
@@ -50,8 +50,6 @@ const PRESET_IGNITIONS = [
   { name: '🌿 Algarve Hills', lat: 37.32, lng: -8.55, desc: 'Eucalyptus mountain belt' },
 ];
 
-const RESOLUTIONS: SimulationResolution[] = [60, 90, 120];
-
 function cardinalFromDeg(deg: number): string {
   const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
   const idx = Math.round(((deg % 360) / 22.5)) % 16;
@@ -61,8 +59,8 @@ function cardinalFromDeg(deg: number): string {
 export function SimulationPanel({
   mode,
   onModeChange,
-  resolution,
-  onResolutionChange,
+  resolution: _resolution,
+  onResolutionChange: _onResolutionChange,
   selectedCluster,
   scenarioIgnition,
   scenarioAoi,
@@ -268,28 +266,15 @@ export function SimulationPanel({
             </div></div>
         )}
 
-        {/* ── 3. Resolution Selection ───────────────────────────── */}
-        <div>
-          <p className="text-[10px] text-[#657787] uppercase tracking-widest mb-1.5 font-semibold">
-            Simulation Cell Resolution
-          </p>
-          <div className="flex gap-1" role="group" aria-label="Simulation resolution">
-            {RESOLUTIONS.map((r) => (
-              <button
-                key={r}
-                onClick={() => onResolutionChange(r)}
-                aria-pressed={resolution === r}
-                disabled={isSubmitting || isRunning}
-                className={`flex-1 py-1.5 min-h-[36px] text-[11px] font-semibold rounded border transition-colors tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
-                  resolution === r
-                    ? 'border-[#ff6a2b]/50 text-[#ff6a2b] bg-[#ff6a2b]/15 shadow-xs font-bold'
-                    : 'border-[#162733] text-[#8b98a9] hover:border-[#1e3448] hover:text-[#e6edf3]'
-                }`}
-              >
-                {r}m
-              </button>
-            ))}
-          </div>
+        {/* ── 3. Simulation Grid Resolution ──────────────────────── */}
+        <div className="px-2.5 py-2 rounded bg-[#0b0f14]/80 border border-[#162733] flex items-center justify-between text-[11px]">
+          <span className="text-[#8b98a9] flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2ecc71]" />
+            Simulation Grid
+          </span>
+          <span className="font-mono font-medium text-[#e6edf3]">
+            90m adaptive <span className="text-[#8b98a9] text-[10px]">(optimized for speed)</span>
+          </span>
         </div>
 
         {/* ── 4. Wind Override (What-If Controls) ────────────────── */}

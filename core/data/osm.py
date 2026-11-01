@@ -146,7 +146,7 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
     bbox = _format_bbox_for_osmnx(aoi)
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (
@@ -177,6 +177,12 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
                     break
             except Exception as exc:
                 last_error = exc
+                err_str = str(exc).lower()
+                err_type = type(exc).__name__.lower()
+                if "no data elements" in err_str or "insufficientresponse" in err_type or "emptyoverpass" in err_type:
+                    logger.info("Overpass returned no road elements for bbox %s (remote terrain/unpopulated)", bbox)
+                    downloaded_g = nx.MultiDiGraph()
+                    break
                 logger.warning("Overpass query to %s failed: %s", endpoint, exc)
                 if idx < len(endpoints_to_try) - 1:
                     logger.info("Retrying with alternate Overpass endpoint...")
@@ -185,7 +191,7 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
         ox.settings.requests_timeout = orig_timeout
         ox.settings.overpass_rate_limit = orig_rate_limit
 
-    if downloaded_g is None or len(downloaded_g) == 0:
+    if downloaded_g is None:
         if stale_graph is not None:
             warnings.warn(
                 f"Overpass network request failed ({last_error}). Falling back to stale cached road graph.",
@@ -200,6 +206,10 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
             source="OpenStreetMap",
             url=f"{endpoint_used}/interpreter",
         )
+
+    # Empty graph (wilderness / no roads found in bounding box)
+    if len(downloaded_g) == 0:
+        return downloaded_g
 
     # 4. Retain largest strongly connected component
     if len(downloaded_g) > 0:
@@ -276,12 +286,17 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
         except Exception as exc:
             logger.warning("Failed reading cached settlements %s: %s", settlements_path, exc)
 
+    # If graph has 0 nodes, no settlements can be snapped to it
+    if len(G.nodes) == 0:
+        logger.info("Road graph has 0 nodes; skipping settlement extraction for unroaded terrain.")
+        return []
+
     bbox = _format_bbox_for_osmnx(aoi)
     tags: Dict[str, Any] = {"place": ["village", "hamlet", "town", "suburb", "locality"]}
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (
@@ -302,6 +317,12 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
                 break
             except Exception as exc:
                 last_error = exc
+                err_str = str(exc).lower()
+                err_type = type(exc).__name__.lower()
+                if "no data elements" in err_str or "insufficientresponse" in err_type or "emptyoverpass" in err_type:
+                    logger.info("Overpass returned no settlement features for bbox %s", bbox)
+                    gdf = None
+                    break
                 logger.warning("Overpass features_from_bbox failed on %s: %s", endpoint, exc)
                 if idx < len(endpoints_to_try) - 1:
                     logger.info("Retrying with alternate Overpass endpoint for settlements...")
@@ -450,7 +471,7 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(max(25, float(settings.HTTP_TIMEOUT_S)))
+    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (
@@ -469,6 +490,12 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
                 gdf = ox.features_from_bbox(bbox=bbox, tags=tags)
                 break
             except Exception as exc:
+                err_str = str(exc).lower()
+                err_type = type(exc).__name__.lower()
+                if "no data elements" in err_str or "insufficientresponse" in err_type or "emptyoverpass" in err_type:
+                    logger.info("Overpass returned no shelter features for bbox %s", bbox)
+                    gdf = None
+                    break
                 logger.warning("Overpass features_from_bbox for shelters failed on %s: %s", endpoint, exc)
                 if idx < len(endpoints_to_try) - 1:
                     logger.info("Retrying with alternate Overpass endpoint for shelters...")

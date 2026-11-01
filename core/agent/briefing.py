@@ -71,8 +71,9 @@ def build_facts(
     # 1. Operational Mode and Data Sources
     sources = sorted(set(p.source for p in result.provenance)) if result.provenance else ["Local layers"]
     sources_str = ", ".join(sources)
+    res_m = float(result.spread.grid.res_m) if result.spread and result.spread.grid else 90.0
     system_facts.append(
-        f"Operational mode is {result.mode} using telemetry from {sources_str}."
+        f"Operational mode is {result.mode} at {round(res_m)}m grid resolution (optimized for computational ease) using telemetry from {sources_str}."
     )
 
     # 2. Wind Conditions
@@ -255,6 +256,10 @@ def template_briefing(facts: Dict[str, str]) -> str:
             evac_lines.append(text)
 
     briefing_parts: List[str] = []
+
+    mode_line = next((text for text in facts.values() if text.startswith("Operational mode is")), None)
+    if mode_line:
+        briefing_parts.append(mode_line)
 
     if wind_line:
         briefing_parts.append(wind_line)

@@ -203,7 +203,7 @@ def get_health() -> HealthResponse:
 def get_clusters(hours: int = 48) -> List[ClusterItem]:
     """Scan and return active global fire clusters from NASA FIRMS."""
     try:
-        raw_clusters = find_active_clusters(hours=max(48, hours), top_n=5)
+        raw_clusters = find_active_clusters(hours=max(48, hours), top_n=8)
         cluster_items: List[ClusterItem] = []
         for i, c in enumerate(raw_clusters):
             c_lat = c.get("center_lat", c.get("lat", 0.0))
