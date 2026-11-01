@@ -255,7 +255,7 @@ def run_pipeline(
     if mode == "LIVE":
         try:
             from core.data.firms import fetch_detections
-            dets, prov = fetch_detections(aoi)
+            dets, prov = fetch_detections(aoi, hours=48)
             detections = dets
             provenance_list.append(prov)
             if prov.is_stale:
@@ -512,33 +512,34 @@ def run_pipeline(
     # STAGE 5: Road Graph, Settlements, and Shelters
     # ---------------------------------------------------------
     t0 = time.perf_counter()
+    sim_failure = getattr(settings, "SIMULATE_API_FAILURE", "") or os.environ.get("SIMULATE_API_FAILURE", "")
+    if sim_failure == "overpass":
+        raise PipelineError("FEED_DOWN", "Simulated Overpass API failure", {"source": "OpenStreetMap"})
+
+    G = None
     try:
         G = get_road_graph(aoi)
     except FeedError as fe:
-        raise PipelineError("FEED_DOWN", f"Road network download failed from Overpass: {fe.message}", {"source": "OpenStreetMap", "url": fe.url})
+        warnings_list.append(f"Road network download failed from Overpass ({fe.message}); evacuation routing degraded.")
+        logger.warning("Overpass road network unavailable: %s", fe)
     except Exception as exc:
-        raise PipelineError("FEED_DOWN", f"Unexpected failure retrieving OSM road network: {exc}", {"source": "OpenStreetMap"})
+        warnings_list.append(f"Unexpected failure retrieving OSM road network ({exc}); evacuation routing degraded.")
+        logger.warning("OSM road network failed: %s", exc)
 
-    if G is None or len(G.nodes) == 0:
-        raise PipelineError("OSM_EMPTY", f"OpenStreetMap returned zero drivable roads in the selected area (e.g. open ocean, desert, or unmapped wilderness) [{aoi.west:.4f}, {aoi.south:.4f}, {aoi.east:.4f}, {aoi.north:.4f}]. Please select an inhabited area with road infrastructure.")
-
-    try:
-        settlements = get_settlements(aoi, G)
-    except FeedError as fe:
-        warnings_list.append(f"Overpass settlement query failed ({fe.message}); proceeding with empty settlements.")
+    if G is not None and len(G.nodes) > 0:
+        try:
+            settlements = get_settlements(aoi, G)
+        except Exception as exc:
+            warnings_list.append(f"Overpass settlement query failed ({exc}); proceeding with empty settlements.")
+            settlements = []
+        try:
+            shelters = get_shelters(aoi)
+        except Exception as exc:
+            shelters = []
+    else:
         settlements = []
-    except Exception as exc:
-        logger.warning("Failed retrieving settlements: %s", exc)
-        settlements = []
-
-    try:
-        shelters = get_shelters(aoi)
-    except Exception as exc:
-        logger.warning("Failed retrieving shelters: %s", exc)
         shelters = []
-
-    if not settlements:
-        warnings_list.append("Zero populated settlements detected within the AOI; evacuation plans list is empty.")
+        warnings_list.append("No drivable roads available in AOI; evacuation routing omitted.")
 
     provenance_list.append(
         ProvenanceRecord(
@@ -547,8 +548,8 @@ def run_pipeline(
             url="https://overpass-api.de/api/interpreter",
             fetched_at_utc=ref_time,
             ttl_s=30 * 86400,
-            is_stale=False,
-            note=f"Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Settlements: {len(settlements)}, Shelters: {len(shelters)}",
+            is_stale=G is None,
+            note=f"Nodes: {len(G.nodes) if G else 0}, Edges: {len(G.edges) if G else 0}, Settlements: {len(settlements)}, Shelters: {len(shelters)}",
         )
     )
     record_stage("ingest_osm_infrastructure", t0)
@@ -557,15 +558,18 @@ def run_pipeline(
     # STAGE 6: Graph Annotation & Target Identification
     # ---------------------------------------------------------
     t0 = time.perf_counter()
-    G = annotate_edges(G, spread_result, grid, evac)
-    targets = compute_safe_targets(G, spread_result, grid, shelters, evac)
+    if G is not None and len(G.nodes) > 0:
+        G = annotate_edges(G, spread_result, grid, evac)
+        targets = compute_safe_targets(G, spread_result, grid, shelters, evac)
+    else:
+        targets = []
     record_stage("annotate_graph", t0)
 
     # ---------------------------------------------------------
     # STAGE 7: Evacuation Planning & Scheduling
     # ---------------------------------------------------------
     t0 = time.perf_counter()
-    if settlements:
+    if G is not None and len(G.nodes) > 0 and settlements:
         plans = plan_settlements(
             G=G,
             settlements=settlements,
@@ -584,7 +588,7 @@ def run_pipeline(
     # STAGE 8: Comparison Against Naive Baseline
     # ---------------------------------------------------------
     t0 = time.perf_counter()
-    if plans:
+    if plans and G is not None:
         metrics = compare(plans=plans, G=G, targets=targets, evac=evac)
     else:
         metrics = {
@@ -600,8 +604,8 @@ def run_pipeline(
 
     metrics["n_settlements_total"] = len(settlements)
     metrics["n_shelters_total"] = len(shelters)
-    metrics["n_graph_nodes"] = len(G.nodes)
-    metrics["n_graph_edges"] = len(G.edges)
+    metrics["n_graph_nodes"] = len(G.nodes) if G is not None else 0
+    metrics["n_graph_edges"] = len(G.edges) if G is not None else 0
 
     provenance_list.append(
         ProvenanceRecord(

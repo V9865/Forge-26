@@ -144,7 +144,7 @@ def _fetch_single_source(
             source="NASA FIRMS",
         )
 
-    day_range = max(1, min(5, math.ceil(hours / 24.0)))
+    day_range = max(2, min(5, math.ceil(hours / 24.0)))
     raw_url = f"{FIRMS_BASE_URL}/{map_key}/{source}/{aoi.west:.4f},{aoi.south:.4f},{aoi.east:.4f},{aoi.north:.4f}/{day_range}"
     masked_url = _mask_url(raw_url, map_key)
     cache_key = f"firms:{source}:{aoi.west:.4f},{aoi.south:.4f},{aoi.east:.4f},{aoi.north:.4f}:{day_range}"
@@ -253,9 +253,9 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
     if not map_key:
         raise FeedError("FIRMS MAP_KEY is not configured", source="NASA FIRMS")
 
-    raw_url = f"{FIRMS_BASE_URL}/{map_key}/VIIRS_SNPP_NRT/world/1"
+    raw_url = f"{FIRMS_BASE_URL}/{map_key}/VIIRS_SNPP_NRT/world/2"
     masked_url = _mask_url(raw_url, map_key)
-    cache_key = "firms:world:1"
+    cache_key = "firms:world:2"
 
     def _do_fetch() -> Tuple[bytes, str, str]:
         logger.info("Requesting global FIRMS data from %s", masked_url)
