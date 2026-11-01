@@ -20,9 +20,9 @@ class Settings:
 
     # API Keys & Endpoints
     FIRMS_MAP_KEY: str = ""
-    LLM_CHAIN: str = "groq:llama-3.3-70b-versatile,groq:llama-3.1-8b-instant,ollama:qwen2.5:7b-instruct"
-    LLM_PLANNER_MODEL: str = "groq:llama-3.1-8b-instant"
-    LLM_BRIEFING_MODEL: str = "groq:llama-3.3-70b-versatile"
+    LLM_CHAIN: str = "groq:qwen/qwen3.8-27b,groq:llama-3.3-70b-versatile,groq:llama-3.1-8b-instant,ollama:qwen2.5:7b-instruct"
+    LLM_PLANNER_MODEL: str = "groq:qwen/qwen3.8-27b"
+    LLM_BRIEFING_MODEL: str = "groq:qwen/qwen3.8-27b"
     GROQ_API_KEY: str = ""
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
@@ -73,10 +73,10 @@ def get_settings() -> Settings:
         FIRMS_MAP_KEY=os.getenv("FIRMS_MAP_KEY", ""),
         LLM_CHAIN=os.getenv(
             "LLM_CHAIN",
-            "groq:llama-3.3-70b-versatile,groq:llama-3.1-8b-instant,ollama:qwen2.5:7b-instruct",
+            "groq:qwen/qwen3.8-27b,groq:llama-3.3-70b-versatile,groq:llama-3.1-8b-instant,ollama:qwen2.5:7b-instruct",
         ),
-        LLM_PLANNER_MODEL=os.getenv("LLM_PLANNER_MODEL", "groq:llama-3.1-8b-instant"),
-        LLM_BRIEFING_MODEL=os.getenv("LLM_BRIEFING_MODEL", "groq:llama-3.3-70b-versatile"),
+        LLM_PLANNER_MODEL=os.getenv("LLM_PLANNER_MODEL", "groq:qwen/qwen3.8-27b"),
+        LLM_BRIEFING_MODEL=os.getenv("LLM_BRIEFING_MODEL", "groq:qwen/qwen3.8-27b"),
         GROQ_API_KEY=os.getenv("GROQ_API_KEY", ""),
         GROQ_BASE_URL=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
         OLLAMA_BASE_URL=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),

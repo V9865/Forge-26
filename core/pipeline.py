@@ -28,7 +28,7 @@ import logging
 import math
 import os
 import time
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 import numpy as np
 
 from core.config import get_settings
@@ -199,6 +199,7 @@ def run_pipeline(
     evac_params: Optional[EvacParams] = None,
     spread_params: Optional[SpreadParams] = None,
     bypass_cache: bool = False,
+    on_progress: Optional[Callable[[str, float], None]] = None,
 ) -> PipelineResult:
     """Execute the end-to-end wildfire spread and evacuation planning pipeline.
 
@@ -247,6 +248,7 @@ def run_pipeline(
         logger.info("Pipeline stage '%s' completed in %.3fs", stage_name, elapsed)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Ingesting fire satellite telemetry (FIRMS)", 0.20)
     # STAGE 1: Detections (NASA FIRMS or Scenario Ignition)
     # ---------------------------------------------------------
     t0 = time.perf_counter()
@@ -341,6 +343,7 @@ def run_pipeline(
     record_stage("ingest_detections", t0)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Fetching weather forecast (Open-Meteo)", 0.35)
     # STAGE 2: Weather & Wind (Open-Meteo or User Override)
     # ---------------------------------------------------------
     t0 = time.perf_counter()
@@ -393,6 +396,7 @@ def run_pipeline(
     record_stage("ingest_weather", t0)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Building terrain & fuel models (WorldCover & Terrarium)", 0.52)
     # STAGE 3: Grid & Environmental Layers
     # ---------------------------------------------------------
     t0 = time.perf_counter()
@@ -435,6 +439,7 @@ def run_pipeline(
     record_stage("build_layers", t0)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Simulating fire spread wavefronts (0–12h)", 0.70)
     # STAGE 4: Fire Spread Simulation
     # ---------------------------------------------------------
     t0 = time.perf_counter()
@@ -509,6 +514,7 @@ def run_pipeline(
     record_stage("simulate_spread", t0)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Querying road network (OpenStreetMap)", 0.82)
     # STAGE 5: Road Graph, Settlements, and Shelters
     # ---------------------------------------------------------
     t0 = time.perf_counter()
@@ -566,6 +572,7 @@ def run_pipeline(
     record_stage("annotate_graph", t0)
 
     # ---------------------------------------------------------
+    if on_progress: on_progress("Computing fire-aware evacuation routes", 0.92)
     # STAGE 7: Evacuation Planning & Scheduling
     # ---------------------------------------------------------
     t0 = time.perf_counter()

@@ -7,6 +7,7 @@ import {
   Map,
   NavigationControl,
   Popup,
+  Marker,
   LngLatBounds,
   type MapMouseEvent,
   type GeoJSONSource,
@@ -49,6 +50,53 @@ export function MapView({
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const scenarioMarkerRef = useRef<Marker | null>(null);
+
+  // Dedicated High-Visibility DOM Marker for Scenario Ignition
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (isScenarioMode && scenarioIgnition) {
+      if (!scenarioMarkerRef.current) {
+        const el = document.createElement('div');
+        el.className = 'ember-scenario-ignition-marker';
+        el.style.cssText =
+          'position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer;';
+        el.innerHTML = `
+          <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 106, 43, 0.45); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #ff6a2b; border: 2.5px solid #ffffff; box-shadow: 0 0 16px rgba(255, 106, 43, 0.95); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔥</div>
+        `;
+        const marker = new Marker({ element: el })
+          .setLngLat([scenarioIgnition.lng, scenarioIgnition.lat])
+          .setPopup(
+            new Popup({ offset: 25 }).setHTML(
+              `<div style="font-family: inherit; font-size: 11px; padding: 4px 6px; color: #fff; background: #121821; border-radius: 4px; border: 1px solid #ff6a2b;">
+                <strong style="color: #ff6a2b;">Scenario Ignition</strong><br/>${scenarioIgnition.lat.toFixed(4)}°N, ${scenarioIgnition.lng.toFixed(4)}°E
+              </div>`
+            )
+          )
+          .addTo(map);
+        scenarioMarkerRef.current = marker;
+      } else {
+        scenarioMarkerRef.current.setLngLat([scenarioIgnition.lng, scenarioIgnition.lat]);
+      }
+    } else {
+      if (scenarioMarkerRef.current) {
+        scenarioMarkerRef.current.remove();
+        scenarioMarkerRef.current = null;
+      }
+    }
+  }, [mapLoaded, isScenarioMode, scenarioIgnition]);
+
+  useEffect(() => {
+    return () => {
+      if (scenarioMarkerRef.current) {
+        scenarioMarkerRef.current.remove();
+        scenarioMarkerRef.current = null;
+      }
+    };
+  }, []);
 
   // ── 1. Map Initialization & ResizeObserver ──────────────────────────────────
   useEffect(() => {

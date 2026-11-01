@@ -333,9 +333,13 @@ class JobManager:
                 else None
             )
 
+            def _update_job_stage(stage_title: str, progress_fraction: float):
+                job.stage = stage_title
+                job.progress = max(job.progress, round(progress_fraction, 2))
+
             try:
-                job.stage = "Executing simulation pipeline"
-                job.progress = 0.40
+                job.stage = "Initializing simulation feeds"
+                job.progress = 0.12
 
                 res = run_pipeline(
                     aoi=box,
@@ -343,6 +347,7 @@ class JobManager:
                     ignition_point=ign_pt,
                     wind_override=wind_over,
                     bypass_cache=False,
+                    on_progress=_update_job_stage,
                 )
 
                 job.stage = "Formatting response and generating briefing"

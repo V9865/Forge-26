@@ -105,17 +105,35 @@ export function AppLayout() {
   const [jobSource, setJobSource] = useState<'MANUAL' | 'MONITOR' | null>(null);
   const [boundClusterId, setBoundClusterId] = useState<string | null>(null);
   const [rightPanelMode, setRightPanelMode] = useState<'standard' | 'wide' | 'collapsed'>('wide');
+  const [leftWidth, setLeftWidth] = useState<number>(340);
+  const [rightWidth, setRightWidth] = useState<number>(500);
+  const [isDraggingLeft, setIsDraggingLeft] = useState(false);
+  const [isDraggingRight, setIsDraggingRight] = useState(false);
 
-  const rightPanelWidthClass = useMemo(() => {
-    switch (rightPanelMode) {
-      case 'wide':
-        return 'w-[480px] xl:w-[540px]';
-      case 'standard':
-        return 'w-84 xl:w-96';
-      case 'collapsed':
-        return 'hidden';
-    }
-  }, [rightPanelMode]);
+  useEffect(() => {
+    if (!isDraggingLeft && !isDraggingRight) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingLeft) {
+        setLeftWidth(Math.min(520, Math.max(260, e.clientX)));
+      }
+      if (isDraggingRight) {
+        setRightWidth(Math.min(740, Math.max(320, window.innerWidth - e.clientX)));
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingLeft(false);
+      setIsDraggingRight(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingLeft, isDraggingRight]);
 
   // Monitor identity and baseline refs
   const hasHydratedBaselineRef = useRef(false);
@@ -593,13 +611,25 @@ export function AppLayout() {
 
       {/* Main workspace */}
       <div className="relative flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* ── Left panel dock (Desktop >= 1024px) ───────────────── */}
+        {/* ── Left panel dock (Desktop >= 1024px, Resizable) ───── */}
         <aside
-          className="hidden lg:flex w-72 xl:w-80 flex-shrink-0 flex-col gap-2 p-2 border-r border-[#162733] overflow-y-auto"
+          style={{ width: `${leftWidth}px` }}
+          className="hidden lg:flex flex-shrink-0 flex-col gap-2 p-2 border-r border-[#162733] overflow-y-auto"
           aria-label="Fire intelligence and simulation controls"
         >
           {leftPanelsContent}
         </aside>
+
+        {/* Left Resize Splitter Handle */}
+        <div
+          onMouseDown={() => setIsDraggingLeft(true)}
+          className={`hidden lg:flex w-1.5 hover:w-2 bg-[#162733] hover:bg-[#ff6a2b] transition-all cursor-col-resize items-center justify-center select-none group z-10 shrink-0 ${
+            isDraggingLeft ? 'w-2 bg-[#ff6a2b]' : ''
+          }`}
+          title="Drag to resize Intel & Sim sidebar"
+        >
+          <div className="w-0.5 h-6 bg-[#657787] group-hover:bg-white rounded-full transition-colors" />
+        </div>
 
         {/* ── Center: Map Workspace (full width on tablet & mobile) ─ */}
         <main className="relative flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden" role="main">
@@ -667,42 +697,81 @@ export function AppLayout() {
           </div>
         </main>
 
-        {/* ── Right panel dock (Desktop >= 1024px) ──────────────── */}
-        <aside
-          className={`hidden lg:flex ${rightPanelWidthClass} flex-shrink-0 flex-col gap-2 p-2 border-l border-[#162733] overflow-y-auto transition-all duration-150`}
-          aria-label="Agent briefing and evacuation intelligence"
-        >
-          {/* Header Bar with Width Toggle and Collapse controls */}
-          <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#090d12] border border-[#162733] rounded-lg shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs">📋</span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#e6edf3]">
-                Intelligence & Evacuation
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setRightPanelMode((m) => (m === 'wide' ? 'standard' : 'wide'))}
-                className="px-2 py-0.5 text-[10px] font-medium text-[#8b98a9] hover:text-[#e6edf3] bg-[#121821] hover:bg-[#162733] border border-[#162733] rounded transition-colors cursor-pointer"
-                title={rightPanelMode === 'wide' ? 'Switch to standard width (360px)' : 'Expand to wide view (540px)'}
-              >
-                {rightPanelMode === 'wide' ? '⤡ Standard (360px)' : '⤢ Expand (540px)'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRightPanelMode('collapsed')}
-                className="w-6 h-5 flex items-center justify-center text-[11px] text-[#8b98a9] hover:text-[#ff3b30] bg-[#121821] hover:bg-[#162733] border border-[#162733] rounded transition-colors cursor-pointer"
-                title="Collapse sidebar for full-screen map"
-                aria-label="Collapse panel"
-              >
-                ✕
-              </button>
-            </div>
+        {/* Right Resize Splitter Handle */}
+        {rightPanelMode !== 'collapsed' && (
+          <div
+            onMouseDown={() => setIsDraggingRight(true)}
+            className={`hidden lg:flex w-1.5 hover:w-2 bg-[#162733] hover:bg-[#ff6a2b] transition-all cursor-col-resize items-center justify-center select-none group z-10 shrink-0 ${
+              isDraggingRight ? 'w-2 bg-[#ff6a2b]' : ''
+            }`}
+            title="Drag to resize Evacuation & Briefing sidebar"
+          >
+            <div className="w-0.5 h-6 bg-[#657787] group-hover:bg-white rounded-full transition-colors" />
           </div>
+        )}
 
-          {rightPanelsContent}
-        </aside>
+        {/* ── Right panel dock (Desktop >= 1024px, Resizable) ───── */}
+        {rightPanelMode !== 'collapsed' && (
+          <aside
+            style={{ width: `${rightWidth}px` }}
+            className="hidden lg:flex flex-shrink-0 flex-col gap-2 p-2 border-l border-[#162733] overflow-y-auto"
+            aria-label="Agent briefing and evacuation intelligence"
+          >
+            {/* Header Bar with Width Presets and Collapse controls */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#090d12] border border-[#162733] rounded-lg shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs">📋</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e6edf3]">
+                  Intelligence & Evac
+                </span>
+                <span className="text-[10px] text-[#8b98a9] font-mono">({rightWidth}px)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setRightWidth(360)}
+                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors cursor-pointer ${
+                    rightWidth <= 400 ? 'bg-[#ff6a2b] text-white' : 'text-[#8b98a9] hover:text-[#e6edf3] bg-[#121821] border border-[#162733]'
+                  }`}
+                  title="360px Compact View"
+                >
+                  360px
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightWidth(520)}
+                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors cursor-pointer ${
+                    rightWidth > 400 && rightWidth <= 580 ? 'bg-[#ff6a2b] text-white' : 'text-[#8b98a9] hover:text-[#e6edf3] bg-[#121821] border border-[#162733]'
+                  }`}
+                  title="520px Wide View"
+                >
+                  520px
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightWidth(660)}
+                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors cursor-pointer ${
+                    rightWidth > 580 ? 'bg-[#ff6a2b] text-white' : 'text-[#8b98a9] hover:text-[#e6edf3] bg-[#121821] border border-[#162733]'
+                  }`}
+                  title="660px Extra-Wide View"
+                >
+                  660px
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightPanelMode('collapsed')}
+                  className="w-6 h-5 flex items-center justify-center text-[11px] text-[#8b98a9] hover:text-[#ff3b30] bg-[#121821] hover:bg-[#162733] border border-[#162733] rounded transition-colors cursor-pointer ml-1"
+                  title="Collapse sidebar for full-screen map"
+                  aria-label="Collapse panel"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {rightPanelsContent}
+          </aside>
+        )}
 
         {/* ── Mobile/Tablet Backdrop (< 1024px) ─────────────────── */}
         {activeDrawer !== null && (
