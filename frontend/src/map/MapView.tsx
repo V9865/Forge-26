@@ -118,8 +118,8 @@ export function MapView({
     const map = new Map({
       container: containerRef.current,
       style: createBaseMapStyle(false),
-      center: [-4.0, 39.8],
-      zoom: 5.5,
+      center: [7.5500, 46.2800],
+      zoom: 10.5,
       pitch: 0,
       bearing: 0,
       attributionControl: { compact: true },
@@ -261,10 +261,17 @@ export function MapView({
 
     // Click on map to place Scenario Ignition Point
     const handleMapClick = (e: MapMouseEvent) => {
-      const interactiveFeatures = map.queryRenderedFeatures(e.point, {
-        layers: ['settlements-circle', 'fire-detections-point', 'fire-detections-clusters'],
-      });
-      if (interactiveFeatures.length > 0) return;
+      try {
+        const queryLayers = ['settlements-circle', 'fire-detections-point', 'fire-detections-clusters'].filter(
+          (id) => Boolean(map.getLayer(id)),
+        );
+        if (queryLayers.length > 0) {
+          const interactiveFeatures = map.queryRenderedFeatures(e.point, { layers: queryLayers });
+          if (interactiveFeatures.length > 0) return;
+        }
+      } catch {
+        // Safe fallback
+      }
 
       if (!onSelectIgnition) return;
 
@@ -429,8 +436,14 @@ export function MapView({
     );
     setVisibility(['arrival-bands-fill', 'arrival-bands-stroke'], visibility.arrivalBands);
     setVisibility(['settlements-circle', 'settlements-halo', 'settlements-label'], visibility.settlements);
-    setVisibility(['evacuation-routes-line', 'evacuation-routes-glow'], visibility.routes);
-    setVisibility(['baseline-routes-line'], visibility.baselineRoutes);
+    setVisibility(
+      ['evacuation-routes-line', 'evacuation-routes-glow', 'evacuation-routes-casing'].filter((id) => Boolean(map.getLayer(id))),
+      visibility.routes,
+    );
+    setVisibility(
+      ['baseline-routes-line', 'baseline-routes-casing'].filter((id) => Boolean(map.getLayer(id))),
+      visibility.baselineRoutes,
+    );
 
     // Scenario beacon layer visibility
     setVisibility(
@@ -442,17 +455,17 @@ export function MapView({
   // ── 4b. Focus AOI ─────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapLoaded || !focusAoi || flyToTarget) return;
+    if (!map || !mapLoaded || !focusAoi) return;
     try {
       const b = new LngLatBounds(
         [focusAoi.west, focusAoi.south],
         [focusAoi.east, focusAoi.north],
       );
-      map.fitBounds(b, { padding: 48, maxZoom: 12, duration: 800 });
+      map.fitBounds(b, { padding: 48, maxZoom: 13, duration: 900 });
     } catch {
       // Ignored if bounds invalid
     }
-  }, [focusAoi, mapLoaded, flyToTarget]);
+  }, [focusAoi, mapLoaded]);
 
   // ── 4c. Fly To Target (Coordinate button clicks, Presets, Clusters, Settlements) ─
   useEffect(() => {

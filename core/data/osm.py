@@ -86,6 +86,131 @@ def _format_bbox_for_osmnx(aoi: AOI) -> Tuple[float, float, float, float]:
     return (float(aoi.west), float(aoi.south), float(aoi.east), float(aoi.north))
 
 
+def _find_enclosing_cached_graph(aoi: AOI) -> Optional[Tuple[nx.MultiDiGraph, bool]]:
+    """Scan cache directory for a cached road network enclosing or overlapping aoi.
+
+    Returns:
+        Tuple of (subgraph, is_enclosed) or None.
+    """
+    cache_dir = _get_osm_cache_dir()
+    best_candidate: Optional[Tuple[nx.MultiDiGraph, bool]] = None
+
+    for meta_file in cache_dir.glob("*.json"):
+        if meta_file.name.endswith("_settlements.json") or meta_file.name.endswith("_shelters.json"):
+            continue
+        try:
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            name = meta.get("name", "")
+            if not name.startswith("osm_graph_"):
+                continue
+            parts = name.replace("osm_graph_", "").split("_")
+            if len(parts) != 4:
+                continue
+            c_west, c_south, c_east, c_north = map(float, parts)
+
+            encloses = (
+                c_west <= aoi.west + 1e-4
+                and c_south <= aoi.south + 1e-4
+                and c_east >= aoi.east - 1e-4
+                and c_north >= aoi.north - 1e-4
+            )
+            overlaps = not (
+                aoi.east < c_west
+                or aoi.west > c_east
+                or aoi.north < c_south
+                or aoi.south > c_north
+            )
+
+            if not (encloses or overlaps):
+                continue
+
+            graphml_file = meta_file.with_suffix(".graphml")
+            if not graphml_file.exists():
+                continue
+
+            loaded_g = ox.io.load_graphml(graphml_file)
+            nodes_in_aoi = [
+                n
+                for n, d in loaded_g.nodes(data=True)
+                if aoi.west <= float(d.get("x", 0.0)) <= aoi.east
+                and aoi.south <= float(d.get("y", 0.0)) <= aoi.north
+            ]
+            if len(nodes_in_aoi) >= 10:
+                sub_g = loaded_g.subgraph(nodes_in_aoi).copy()
+                if len(sub_g) > 0:
+                    try:
+                        sub_g = ox.truncate.largest_component(sub_g, strongly=True)
+                    except Exception:
+                        pass
+                    if len(sub_g.nodes) >= 5:
+                        if encloses:
+                            logger.info(
+                                "Found enclosing cached road graph %s (%d nodes)",
+                                meta_file.stem[:8],
+                                len(sub_g.nodes),
+                            )
+                            return (sub_g, True)
+                        elif best_candidate is None:
+                            best_candidate = (sub_g, False)
+        except Exception as e:
+            logger.debug("Error checking cache file %s: %s", meta_file, e)
+            continue
+
+    return best_candidate
+
+
+
+def _find_enclosing_cached_settlements(aoi: AOI, G: nx.MultiDiGraph) -> Optional[List[Settlement]]:
+    """Scan cache directory for cached settlements within aoi and snap to G."""
+    if len(G.nodes) == 0:
+        return None
+    cache_dir = _get_osm_cache_dir()
+    for s_file in cache_dir.glob("*_settlements.json"):
+        try:
+            cached_data = json.loads(s_file.read_text(encoding="utf-8"))
+            raw_settlements = cached_data.get("settlements", [])
+            in_aoi: List[Settlement] = []
+            for item in raw_settlements:
+                s = Settlement(**item)
+                if aoi.west <= s.lon <= aoi.east and aoi.south <= s.lat <= aoi.north:
+                    in_aoi.append(s)
+            if len(in_aoi) >= 1:
+                node_coords = np.array([[d["y"], d["x"]] for _, d in G.nodes(data=True)])
+                node_ids = list(G.nodes)
+                final_settlements: List[Settlement] = []
+                for s in in_aoi:
+                    dists = (node_coords[:, 0] - s.lat) ** 2 + (node_coords[:, 1] - s.lon) ** 2
+                    nearest_idx = int(np.argmin(dists))
+                    nearest_node = node_ids[nearest_idx]
+                    final_settlements.append(
+                        Settlement(id=s.id, name=s.name, lat=s.lat, lon=s.lon, node=nearest_node)
+                    )
+                logger.info("Found %d enclosing cached settlements in %s", len(final_settlements), s_file.name[:8])
+                return final_settlements
+        except Exception:
+            continue
+    return None
+
+
+def _find_enclosing_cached_shelters(aoi: AOI) -> Optional[List[Tuple[str, float, float, str]]]:
+    """Scan cache directory for cached shelters within aoi."""
+    cache_dir = _get_osm_cache_dir()
+    for sh_file in cache_dir.glob("*_shelters.json"):
+        try:
+            cached_data = json.loads(sh_file.read_text(encoding="utf-8"))
+            raw_shelters = cached_data.get("shelters", [])
+            in_aoi = [
+                tuple(item)
+                for item in raw_shelters
+                if aoi.west <= item[2] <= aoi.east and aoi.south <= item[1] <= aoi.north
+            ]
+            if len(in_aoi) >= 1:
+                logger.info("Found %d enclosing cached shelters in %s", len(in_aoi), sh_file.name[:8])
+                return in_aoi
+        except Exception:
+            continue
+    return None
+
 def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
     """Retrieve drivable road network graph for an AOI.
 
@@ -132,6 +257,16 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
         except Exception as exc:
             logger.warning("Failed reading cached road graph %s: %s", graphml_path, exc)
 
+    # 1b. Check enclosing cached graph
+    enclosing_res = _find_enclosing_cached_graph(aoi)
+    if enclosing_res is not None:
+        enc_g, is_full = enclosing_res
+        if is_full:
+            logger.info("Serving enclosing road graph from fresh cache for AOI (%d nodes)", len(enc_g.nodes))
+            return enc_g
+        elif stale_graph is None:
+            stale_graph = enc_g
+
     # 2. Check for simulated failure before making network calls
     sim_failure = getattr(settings, "SIMULATE_API_FAILURE", "") or os.environ.get("SIMULATE_API_FAILURE", "")
     if sim_failure == "overpass":
@@ -146,7 +281,7 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
     bbox = _format_bbox_for_osmnx(aoi)
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
+    ox.settings.requests_timeout = int(min(25, max(15, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (
@@ -192,13 +327,18 @@ def get_road_graph(aoi: AOI) -> nx.MultiDiGraph:
         ox.settings.overpass_rate_limit = orig_rate_limit
 
     if downloaded_g is None:
+        if stale_graph is None:
+            enc_res = _find_enclosing_cached_graph(aoi)
+            if enc_res is not None:
+                stale_graph, _ = enc_res
+
         if stale_graph is not None:
             warnings.warn(
-                f"Overpass network request failed ({last_error}). Falling back to stale cached road graph.",
+                f"Overpass network request failed ({last_error}). Falling back to cached road graph.",
                 category=StaleCacheWarning,
                 stacklevel=2,
             )
-            logger.warning("Falling back to stale road graph from cache.")
+            logger.warning("Falling back to cached road graph from disk.")
             return stale_graph
 
         raise FeedError(
@@ -286,6 +426,12 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
         except Exception as exc:
             logger.warning("Failed reading cached settlements %s: %s", settlements_path, exc)
 
+    # 1b. Check enclosing cached settlements
+    enc_settlements = _find_enclosing_cached_settlements(aoi, G)
+    if enc_settlements:
+        logger.info("Serving %d settlements from enclosing cache", len(enc_settlements))
+        return enc_settlements
+
     # If graph has 0 nodes, no settlements can be snapped to it
     if len(G.nodes) == 0:
         logger.info("Road graph has 0 nodes; skipping settlement extraction for unroaded terrain.")
@@ -296,7 +442,7 @@ def get_settlements(aoi: AOI, G: nx.MultiDiGraph) -> List[Settlement]:
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
+    ox.settings.requests_timeout = int(min(25, max(15, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (
@@ -466,12 +612,18 @@ def get_shelters(aoi: AOI) -> List[Tuple[str, float, float, str]]:
         except Exception as exc:
             logger.warning("Failed reading cached shelters %s: %s", shelters_path, exc)
 
+    # 1b. Check enclosing cached shelters
+    enc_shelters = _find_enclosing_cached_shelters(aoi)
+    if enc_shelters:
+        logger.info("Serving %d shelters from enclosing cache", len(enc_shelters))
+        return enc_shelters
+
     bbox = _format_bbox_for_osmnx(aoi)
     tags: Dict[str, Any] = {"amenity": ["school", "hospital", "community_centre"]}
 
     orig_endpoint = ox.settings.overpass_url
     orig_timeout = ox.settings.requests_timeout
-    ox.settings.requests_timeout = int(min(12, max(5, float(settings.HTTP_TIMEOUT_S))))
+    ox.settings.requests_timeout = int(min(25, max(15, float(settings.HTTP_TIMEOUT_S))))
 
     is_swiss = (5.9 <= aoi.west <= 10.5 and 45.8 <= aoi.south <= 47.8)
     endpoints_to_try = (

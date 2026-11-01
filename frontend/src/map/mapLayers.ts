@@ -10,18 +10,12 @@ import type { StyleSpecification } from 'maplibre-gl';
 
 // ── Basemap tile endpoints ───────────────────────────────────────────────────
 
-const cartoKey = (import.meta.env.VITE_CARTO_API_KEY as string | undefined)?.trim() || '';
-
-export const CARTO_DARK_TILES = cartoKey
-  ? [
-      `https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
-      `https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
-      `https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
-      `https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${cartoKey}`,
-    ]
-  : [
-      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    ];
+export const CARTO_DARK_TILES = [
+  'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+];
 
 export const OSM_FALLBACK_TILES = [
   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -142,28 +136,48 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
         },
       },
 
-      // 3. Naive Baseline Routes (Cut by fire - dashed warning style)
+      // 3. Naive Baseline Routes (Cut by fire - dashed warning style with dark casing)
+      {
+        id: 'baseline-routes-casing',
+        type: 'line',
+        source: 'baseline-routes',
+        paint: {
+          'line-color': '#0b0f14',
+          'line-width': 5.5,
+          'line-opacity': 0.9,
+        },
+      },
       {
         id: 'baseline-routes-line',
         type: 'line',
         source: 'baseline-routes',
         paint: {
-          'line-color': '#ff3b30',
-          'line-width': 2.5,
+          'line-color': '#ff1744',
+          'line-width': 3.5,
           'line-dasharray': [2, 2],
-          'line-opacity': 0.75,
+          'line-opacity': 1.0,
         },
       },
 
-      // 4. Fire-Aware Recommended Evacuation Routes (Safe path)
+      // 4. Fire-Aware Recommended Evacuation Routes (High-contrast neon path)
+      {
+        id: 'evacuation-routes-casing',
+        type: 'line',
+        source: 'evacuation-routes',
+        paint: {
+          'line-color': '#0b0f14',
+          'line-width': 7,
+          'line-opacity': 0.95,
+        },
+      },
       {
         id: 'evacuation-routes-glow',
         type: 'line',
         source: 'evacuation-routes',
         paint: {
-          'line-color': '#2ecc71',
-          'line-width': 7,
-          'line-opacity': 0.25,
+          'line-color': '#00ff88',
+          'line-width': 10,
+          'line-opacity': 0.4,
           'line-blur': 2,
         },
       },
@@ -172,9 +186,9 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
         type: 'line',
         source: 'evacuation-routes',
         paint: {
-          'line-color': '#2ecc71',
-          'line-width': 3.5,
-          'line-opacity': 0.95,
+          'line-color': '#00e676',
+          'line-width': 4.5,
+          'line-opacity': 1.0,
         },
       },
 
@@ -217,7 +231,7 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
         layout: {
           'text-field': '{point_count_abbreviated}',
           'text-size': 11,
-          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+          'text-font': ['Noto Sans Bold'],
         },
         paint: {
           'text-color': '#ffffff',
@@ -316,7 +330,7 @@ export function createBaseMapStyle(useFallback = false): StyleSpecification {
         source: 'settlements',
         layout: {
           'text-field': ['get', 'name'],
-          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+          'text-font': ['Noto Sans Bold'],
           'text-size': 11,
           'text-offset': [0, 1.2],
           'text-anchor': 'top',
