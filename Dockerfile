@@ -52,8 +52,9 @@ COPY core/ ./core/
 COPY api/ ./api/
 COPY docs/ ./docs/
 
-# Verify API and core application can be loaded
-RUN python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
+# Verify API, core application, and infrastructure providers can be loaded
+RUN python -c "import duckdb, pyarrow; print('DuckDB & PyArrow successfully loaded')" && \
+    python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
 
 # Copy built frontend static distribution from Stage 1 into frontend/dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
