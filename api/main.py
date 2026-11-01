@@ -324,6 +324,13 @@ _HEALTH_CACHE_TTL_S = 30.0
 
 
 
+@app.get("/api/liveness", tags=["Diagnostics"])
+def get_liveness() -> Dict[str, str]:
+    """Instant process liveness probe for connection status monitoring."""
+    return {"status": "ok"}
+
+
+
 @app.get("/api/health", response_model=HealthResponse, tags=["Diagnostics"])
 
 def get_health() -> HealthResponse:

@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { getHealth } from '@/api/client';
+import { getLiveness, getHealth } from '@/api/client';
 import type { ConnectionStatus } from '@/types';
 
 interface UseBackendHealthResult {
@@ -19,10 +19,17 @@ export function useBackendHealth(pollIntervalMs = 30_000): UseBackendHealthResul
 
   const check = useCallback(async () => {
     try {
-      await getHealth();
+      // Fast lightweight process liveness check (<5ms)
+      await getLiveness();
       setStatus('CONNECTED');
     } catch {
-      setStatus('DISCONNECTED');
+      // Fall back to health endpoint if liveness check failed or on older backend
+      try {
+        await getHealth();
+        setStatus('CONNECTED');
+      } catch {
+        setStatus('DISCONNECTED');
+      }
     } finally {
       setLastChecked(new Date());
     }
@@ -33,13 +40,20 @@ export function useBackendHealth(pollIntervalMs = 30_000): UseBackendHealthResul
 
     const performHealthCheck = async () => {
       try {
-        await getHealth();
+        await getLiveness();
         if (isSubscribed) {
           setStatus('CONNECTED');
         }
       } catch {
-        if (isSubscribed) {
-          setStatus('DISCONNECTED');
+        try {
+          await getHealth();
+          if (isSubscribed) {
+            setStatus('CONNECTED');
+          }
+        } catch {
+          if (isSubscribed) {
+            setStatus('DISCONNECTED');
+          }
         }
       } finally {
         if (isSubscribed) {

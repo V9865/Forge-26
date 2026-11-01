@@ -113,8 +113,12 @@ export async function getHealth(): Promise<HealthResponse> {
  * Retrieve available active-fire clusters from NASA FIRMS.
  * Backend returns a bare array of ClusterItem.
  */
-export async function getClusters(hours = 48): Promise<ClusterItem[]> {
-  return apiFetch<ClusterItem[]>(`/api/clusters?hours=${hours}`);
+export async function getLiveness(): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>('/api/liveness', {}, 5_000);
+}
+
+export async function getClusters(hours = 24): Promise<ClusterItem[]> {
+  return apiFetch<ClusterItem[]>(`/api/clusters?hours=${hours}`, {}, 60_000);
 }
 
 /**
