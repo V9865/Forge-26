@@ -22,6 +22,7 @@ interface SimulationPanelProps {
   scenarioIgnition: { lat: number; lng: number } | null;
   scenarioAoi: AOIModel | null;
   onClearIgnition: () => void;
+  onSelectIgnition?: (pt: { lat: number; lng: number }) => void;
   // Wind override
   isWindOverrideEnabled: boolean;
   onToggleWindOverride: (enabled: boolean) => void;
@@ -42,6 +43,12 @@ interface SimulationPanelProps {
   modeLockedReason?: string;
 }
 
+const PRESET_IGNITIONS = [
+  { name: '🌲 Montes de Toledo', lat: 39.55, lng: -4.35, desc: 'Pine & shrubland' },
+  { name: '🏞️ Sierra Foothills', lat: 37.85, lng: -120.25, desc: 'Chaparral & oaks' },
+  { name: '🌿 Algarve Hills', lat: 37.32, lng: -8.55, desc: 'Eucalyptus mountain belt' },
+];
+
 const RESOLUTIONS: SimulationResolution[] = [60, 90, 120];
 
 function cardinalFromDeg(deg: number): string {
@@ -59,6 +66,7 @@ export function SimulationPanel({
   scenarioIgnition,
   scenarioAoi,
   onClearIgnition,
+  onSelectIgnition,
   isWindOverrideEnabled,
   onToggleWindOverride,
   windSpeed,
@@ -217,7 +225,28 @@ export function SimulationPanel({
                 Click anywhere on the interactive map to place a scenario ignition beacon.
               </p>
             )}
-          </div>
+          
+
+            {/* Quick preset scenarios */}
+            <div className="flex flex-col gap-1.5 pt-2 border-t border-[#162733]">
+              <span className="text-[10px] text-[#8b98a9] uppercase tracking-wider font-semibold">
+                Preset Scenarios (1-Click Test):
+              </span>
+              <div className="grid grid-cols-1 gap-1">
+                {PRESET_IGNITIONS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => onSelectIgnition?.({ lat: preset.lat, lng: preset.lng })}
+                    disabled={isSubmitting || isRunning}
+                    className="flex items-center justify-between px-2 py-1.5 bg-[#121821] hover:bg-[#162733] border border-[#162733] hover:border-[#f5a524]/50 rounded text-left transition-colors cursor-pointer"
+                  >
+                    <span className="text-[11px] text-[#e6edf3] font-medium">{preset.name}</span>
+                    <span className="text-[10px] text-[#8b98a9] font-mono">{preset.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div></div>
         )}
 
         {/* ── 3. Resolution Selection ───────────────────────────── */}

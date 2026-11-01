@@ -359,6 +359,12 @@ export function AppLayout() {
     setScenarioIgnition(null);
   };
 
+  const handleSelectIgnition = (pt: { lat: number; lng: number }) => {
+    setScenarioIgnition(pt);
+    const derivedAoi = getScenarioAoi(pt, viewportBounds);
+    setFocusAoi(derivedAoi);
+  };
+
   const handleBoundsChange = useCallback((bounds: AOIModel) => {
     setViewportBounds(bounds);
   }, []);
@@ -478,6 +484,7 @@ export function AppLayout() {
         scenarioIgnition={scenarioIgnition}
         scenarioAoi={scenarioAoi}
         onClearIgnition={handleClearIgnition}
+        onSelectIgnition={handleSelectIgnition}
         isWindOverrideEnabled={isWindOverrideEnabled}
         onToggleWindOverride={setIsWindOverrideEnabled}
         windSpeed={windSpeed}
