@@ -137,6 +137,22 @@ def test_clusters_endpoint(client: TestClient, monkeypatch: pytest.MonkeyPatch) 
     assert clusters[0]["count"] == 12
 
 
+def test_clusters_feed_failure_is_reported_not_as_empty_success(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A NASA FIRMS outage must be visible to clients as an upstream error."""
+    def fail_scan(hours: int, top_n: int):
+        raise RuntimeError("FIRMS MAP_KEY is invalid")
+
+    monkeypatch.setattr("api.main.find_active_clusters", fail_scan)
+    response = client.get("/api/clusters?hours=24")
+
+    assert response.status_code == 502
+    payload = response.json()
+    assert payload["error"]["code"] == "FEED_DOWN"
+    assert "NASA FIRMS cluster retrieval failed" in payload["error"]["message"]
+
+
 def test_submit_and_poll_flow(client: TestClient) -> None:
     """Verify POST /api/plan returns 202 and GET /api/jobs/{id} polls to done."""
     body = {

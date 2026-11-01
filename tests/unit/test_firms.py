@@ -1,8 +1,9 @@
 """Unit tests for FIRMS CSV parser and deduplication logic."""
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 import pytest
-from core.data.firms import deduplicate_detections, parse_firms_csv
+from core.data.firms import deduplicate_detections, find_active_clusters, parse_firms_csv
 from core.errors import FeedError
 from core.models import FireDetection
 
@@ -76,4 +77,44 @@ def test_deduplicate_detections() -> None:
     assert 45.0 in frps
     assert 20.0 in frps
     assert 15.0 not in frps
+
+def test_active_clusters_use_only_live_detections_and_cover_their_extent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Detected clusters must be FIRMS-derived and their AOI must include the detections."""
+    now = datetime.now(timezone.utc)
+    detections = [
+        FireDetection(lat=38.1500, lon=-120.2400, acq_time_utc=now, frp=15.0, confidence="h", satellite="N"),
+        FireDetection(lat=38.1510, lon=-120.0300, acq_time_utc=now, frp=25.0, confidence="h", satellite="N20"),
+    ]
+
+    monkeypatch.setattr(
+        "core.data.firms.get_settings",
+        lambda: SimpleNamespace(
+            SIMULATE_API_FAILURE="",
+            FIRMS_MAP_KEY="test-key",
+            HTTP_TIMEOUT_S=2,
+            FIRES_TTL_S=900,
+        ),
+    )
+    monkeypatch.setattr(
+        "core.data.firms.cached_or_fetch",
+        lambda **kwargs: (b"FIRMS CSV", None),
+    )
+    monkeypatch.setattr(
+        "core.data.firms.parse_firms_csv",
+        lambda **kwargs: detections,
+    )
+
+    clusters = find_active_clusters(hours=24, top_n=8)
+
+    # The old implementation prepended four hardcoded benchmark locations.
+    assert len(clusters) == 1
+    cluster = clusters[0]
+    assert cluster["count"] == 2
+    aoi = cluster["suggested_aoi"]
+    assert aoi["west"] <= min(d.lon for d in detections)
+    assert aoi["east"] >= max(d.lon for d in detections)
+    assert aoi["south"] <= min(d.lat for d in detections)
+    assert aoi["north"] >= max(d.lat for d in detections)
+    assert aoi["east"] - aoi["west"] <= 0.6
+    assert aoi["north"] - aoi["south"] <= 0.6
 

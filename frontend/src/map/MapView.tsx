@@ -63,7 +63,8 @@ export function MapView({
   const mapRef = useRef<Map | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const scenarioMarkerRef = useRef<Marker | null>(null);
-  const hasSwitchedToFallbackRef = useRef(false);
+  const hasFallbackTriggeredRef = useRef(false);
+  const styleLoadedRef = useRef(false);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
@@ -102,11 +103,12 @@ export function MapView({
 
     let styleWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const switchToFallback = () => {
-      if (hasSwitchedToFallbackRef.current || !mapRef.current) return;
-      hasSwitchedToFallbackRef.current = true;
+    const switchToFallback = (reason?: unknown) => {
+      if (hasFallbackTriggeredRef.current || !mapRef.current) return;
+      hasFallbackTriggeredRef.current = true;
       setIsUsingFallback(true);
-      console.warn('[EmberRoute Map] Vector style timeout or network failure; engaging resilient OSM standard raster fallback.');
+      setMapLoaded(false);
+      console.warn('[EmberRoute Map] Vector style timeout or network failure; engaging resilient OSM standard raster fallback.', reason);
       try {
         mapRef.current.setStyle(createFallbackRasterStyle());
       } catch (err) {
@@ -116,50 +118,49 @@ export function MapView({
 
     // Watchdog: If primary vector style hasn't finished loading in 3.5s, fall back to raster
     styleWatchdogTimer = setTimeout(() => {
-      if (!map.isStyleLoaded() && !hasSwitchedToFallbackRef.current) {
-        switchToFallback();
+      if (!map.isStyleLoaded() && !hasFallbackTriggeredRef.current) {
+        switchToFallback('Watchdog 3.5s timeout reached');
       }
     }, 3500);
 
-    const ensureLayers = () => {
+    // MapLibre removes custom sources and layers whenever setStyle() is called.
+    // Register operational layers on every style.load (initial style and fallback).
+    const handleStyleLoad = () => {
       if (styleWatchdogTimer) {
         clearTimeout(styleWatchdogTimer);
         styleWatchdogTimer = null;
       }
       try {
         setupOperationalLayers(map);
+        styleLoadedRef.current = true;
         setMapLoaded(true);
         emitBounds();
         map.resize();
       } catch (err) {
-        console.warn('[EmberRoute Map] Operational layers initialization notice:', err);
+        console.error('[EmberRoute Map] Failed to register operational layers:', err);
       }
     };
 
-    map.on('load', ensureLayers);
-    map.on('styledata', () => {
-      if (map.isStyleLoaded()) {
-        ensureLayers();
-      }
-    });
+    const handleMapError = (e: ErrorEvent) => {
+      const message = e.error?.message?.toLowerCase() ?? '';
+      const styleUrl = DEFAULT_OPENFREEMAP_STYLE.toLowerCase();
+      const isPrimaryStyleError =
+        message.includes('openfreemap') ||
+        message.includes('styles/dark') ||
+        message.includes(styleUrl);
 
-    map.on('moveend', emitBounds);
-
-    // Resilient error handler: subresource 404s log notice; fatal style failures trigger fallback
-    map.on('error', (e: ErrorEvent) => {
       if (e.error?.message) {
         console.warn('[EmberRoute MapLibre Event]:', e.error.message);
-        if (
-          !mapLoaded &&
-          !hasSwitchedToFallbackRef.current &&
-          (e.error.message.includes('style') ||
-            e.error.message.includes('Failed to fetch') ||
-            e.error.message.includes('404'))
-        ) {
-          switchToFallback();
-        }
       }
-    });
+      // Do not mistake a later tile/font/GeoJSON error for a basemap style failure.
+      if (isPrimaryStyleError && !hasFallbackTriggeredRef.current && !styleLoadedRef.current) {
+        switchToFallback(e.error);
+      }
+    };
+
+    map.on('style.load', handleStyleLoad);
+    map.on('moveend', emitBounds);
+    map.on('error', handleMapError);
 
     const resizeObserver = new ResizeObserver(() => {
       map.resize();
@@ -173,6 +174,9 @@ export function MapView({
         clearTimeout(styleWatchdogTimer);
       }
       resizeObserver.disconnect();
+      map.off('style.load', handleStyleLoad);
+      map.off('moveend', emitBounds);
+      map.off('error', handleMapError);
       popupRef.current?.remove();
       scenarioMarkerRef.current?.remove();
       map.remove();

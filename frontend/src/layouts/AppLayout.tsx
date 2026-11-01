@@ -152,7 +152,7 @@ export function AppLayout() {
   const [activeDrawer, setActiveDrawer] = useState<'left' | 'right' | null>(null);
 
   // Real job polling hook
-  const { data: jobData } = useJobPoller(currentJobId);
+  const { data: jobData, error: jobPollError } = useJobPoller(currentJobId);
 
   const isRunning =
     jobData?.status === 'queued' || jobData?.status === 'running';
@@ -187,9 +187,15 @@ export function AppLayout() {
     try {
       const items = await getClusters(24);
       setClusters(items);
-      // Auto-select first cluster if none is selected
-      if (items.length > 0 && !selectedClusterId) {
+
+      // Keep selection aligned with the current live FIRMS response. A cluster
+      // can disappear between refreshes; never leave a stale ID selected.
+      if (items.length === 0) {
+        setSelectedClusterId(null);
+        setFocusAoi(null);
+      } else if (!selectedClusterId || !items.some((item) => item.id === selectedClusterId)) {
         setSelectedClusterId(items[0].id);
+        setFocusAoi(items[0].suggested_aoi);
       }
     } catch (err) {
       const message =
@@ -212,6 +218,15 @@ export function AppLayout() {
   // Handle cluster selection from FireIntelligencePanel
   const handleSelectCluster = (cluster: ClusterItem | null) => {
     if (isMonitorLocked) return;
+
+    // A report belongs to the AOI/job that produced it. Clear the previous
+    // result when the operator selects a different detected cluster so an old
+    // briefing is never presented as the report for the new selection.
+    setCurrentJobId(null);
+    setJobSource('MANUAL');
+    setSelectedSettlementId(null);
+    setSubmissionError(null);
+
     if (cluster) {
       setSelectedClusterId(cluster.id);
       setFocusAoi(cluster.suggested_aoi);
@@ -299,7 +314,7 @@ export function AppLayout() {
     !isRunning &&
     !isSubmitting &&
     (operatingMode === 'LIVE'
-      ? selectedClusterId !== null
+      ? selectedCluster !== null
       : scenarioIgnition !== null);
 
   // Real plan submission
@@ -543,7 +558,8 @@ export function AppLayout() {
       <BriefingPanel
         briefing={jobData?.result?.briefing ?? null}
         warnings={jobData?.result?.warnings ?? []}
-        jobStatus={jobData?.status ?? null}
+        jobStatus={jobData?.status ?? (jobPollError ? 'error' : null)}
+        jobError={jobData?.error?.message ?? jobPollError}
       />
 
       <MetricsSummary metrics={jobData?.result?.metrics ?? null} />

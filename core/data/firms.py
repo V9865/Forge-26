@@ -319,11 +319,14 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
                 )
             return resp.content, "NASA FIRMS", masked_url
 
+    # Cluster discovery feeds the LIVE run selector, so do not silently turn
+    # an expired global cache into a current "detected" cluster list. A failed
+    # refresh must surface as FEED_DOWN at the API boundary.
     content_bytes, _ = cached_or_fetch(
         key=cache_key,
         ttl_s=settings.FIRES_TTL_S,
         fetch_fn=_do_fetch,
-        allow_stale=True,
+        allow_stale=False,
     )
 
     detections = parse_firms_csv(
@@ -382,12 +385,30 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
             center_lat = sum(d.lat for d in c_dets) / count
             center_lon = sum(d.lon for d in c_dets) / count
 
-        # Suggested AOI: 0.2 x 0.2 degrees centered at centroid
+        # Build the AOI from the detections' actual extent, not only the
+        # centroid. A fixed 0.2-degree box can exclude valid points from a
+        # 0.25-degree cluster bin; the subsequent LIVE fetch would then see
+        # zero detections and refuse to generate a report.
+        padding_deg = 0.03
+
+        def _bounded_axis(values: List[float], center: float, lower: float, upper: float) -> Tuple[float, float]:
+            lo = max(lower, min(values) - padding_deg)
+            hi = min(upper, max(values) + padding_deg)
+            if hi - lo > 0.6:
+                lo = max(lower, center - 0.3)
+                hi = min(upper, center + 0.3)
+            elif hi - lo < 0.2:
+                lo = max(lower, center - 0.1)
+                hi = min(upper, center + 0.1)
+            return round(lo, 4), round(hi, 4)
+
+        west, east = _bounded_axis([d.lon for d in c_dets], center_lon, -180.0, 180.0)
+        south, north = _bounded_axis([d.lat for d in c_dets], center_lat, -90.0, 90.0)
         suggested_aoi = {
-            "west": round(center_lon - 0.1, 4),
-            "south": round(center_lat - 0.1, 4),
-            "east": round(center_lon + 0.1, 4),
-            "north": round(center_lat + 0.1, 4),
+            "west": west,
+            "south": south,
+            "east": east,
+            "north": north,
         }
 
         cluster_results.append({
@@ -401,42 +422,6 @@ def find_active_clusters(hours: int = 24, top_n: int = 5) -> List[Dict[str, Any]
     # Sort descending by total FRP
     cluster_results.sort(key=lambda c: c["total_frp"], reverse=True)
 
-    # Inhabited benchmark wildfire corridors with real telemetry and road networks
-    inhabited_benchmarks = [
-        {
-            "name": "Valais Alpine Corridor (Switzerland)",
-            "center_lat": 46.2800,
-            "center_lon": 7.5500,
-            "count": 24,
-            "total_frp": 380.0,
-            "suggested_aoi": {"west": 7.45, "south": 46.20, "east": 7.65, "north": 46.35},
-        },
-        {
-            "name": "Bouches-du-Rhône Corridor (France)",
-            "center_lat": 43.4463,
-            "center_lon": 4.8967,
-            "count": 15,
-            "total_frp": 185.0,
-            "suggested_aoi": {"west": 4.80, "south": 43.34, "east": 5.00, "north": 43.54},
-        },
-        {
-            "name": "Lombardy Prealps Corridor (Northern Italy)",
-            "center_lat": 45.4592,
-            "center_lon": 10.4526,
-            "count": 5,
-            "total_frp": 92.0,
-            "suggested_aoi": {"west": 10.35, "south": 45.36, "east": 10.55, "north": 45.56},
-        },
-        {
-            "name": "Sierra Nevada Corridor (California, USA)",
-            "center_lat": 38.1500,
-            "center_lon": -120.1000,
-            "count": 12,
-            "total_frp": 340.0,
-            "suggested_aoi": {"west": -120.20, "south": 38.05, "east": -120.00, "north": 38.25},
-        },
-    ]
-
-    all_clusters = inhabited_benchmarks + cluster_results
-    return all_clusters[:top_n]
-
+    # Return only clusters derived from the current NASA FIRMS response.
+    # Static benchmark locations must never be represented as detected fires.
+    return cluster_results[:top_n]
