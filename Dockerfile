@@ -25,22 +25,35 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install minimal OS dependencies for wheel builds and healthchecks
+# Install minimal OS dependencies for wheel builds, shared libraries, and healthchecks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     libexpat1 \
+    binutils \
     && rm -rf /var/lib/apt/lists/*
+
+# Add explicit verification of libexpat1 shared library presence and registration
+RUN ldconfig && \
+    dpkg -L libexpat1 | grep 'libexpat.so.1' && \
+    ldconfig -p | grep libexpat
 
 # Install Python requirements
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Add diagnostic verification of rasterio and shared library linkage
+RUN python -c "import rasterio; print('Rasterio successfully loaded from:', rasterio.__file__)" && \
+    python -c "import rasterio; import glob, subprocess; so_files = glob.glob(rasterio.__path__[0] + '/**/*.so', recursive=True); [subprocess.run(['ldd', s], check=True) for s in so_files[:3]]"
+
 # Copy application source code
 COPY core/ ./core/
 COPY api/ ./api/
 COPY docs/ ./docs/
+
+# Verify API and core application can be loaded
+RUN python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
 
 # Copy built frontend static distribution from Stage 1 into frontend/dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
