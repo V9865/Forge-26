@@ -53,7 +53,7 @@ COPY api/ ./api/
 COPY docs/ ./docs/
 
 # Verify API, core application, and infrastructure providers can be loaded
-RUN python -c "import duckdb, pyarrow; print('DuckDB & PyArrow successfully loaded')" && \
+RUN python -c "import duckdb, pyarrow; con = duckdb.connect(':memory:'); con.execute('INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;'); print('DuckDB extensions pre-installed!')" && \
     python -c "from api.main import app; print('EmberRoute FastAPI application successfully loaded')"
 
 # Copy built frontend static distribution from Stage 1 into frontend/dist

@@ -146,8 +146,17 @@ def _get_stac_partition_files(
 def _init_duckdb() -> duckdb.DuckDBPyConnection:
     """Initialize an in-memory DuckDB connection with httpfs and spatial loaded."""
     con = duckdb.connect(":memory:")
-    con.execute("LOAD httpfs;")
-    con.execute("LOAD spatial;")
+    try:
+        con.execute("LOAD httpfs;")
+    except Exception:
+        con.execute("INSTALL httpfs;")
+        con.execute("LOAD httpfs;")
+
+    try:
+        con.execute("LOAD spatial;")
+    except Exception:
+        con.execute("INSTALL spatial;")
+        con.execute("LOAD spatial;")
     # Configure resilient HTTP settings
     con.execute("SET http_timeout=25;")
     con.execute("SET http_retries=3;")
