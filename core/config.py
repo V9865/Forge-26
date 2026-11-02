@@ -54,8 +54,8 @@ class Settings:
     SIMULATION_MAX_WORKERS: int = 1
 
     # Native Memory Bounds
-    DUCKDB_MEMORY_LIMIT: str = "128MB"
-    DUCKDB_THREADS: int = 2
+    DUCKDB_MEMORY_LIMIT: str = "64MB"
+    DUCKDB_THREADS: int = 1
     GDAL_CACHEMAX_MB: int = 32
 
     # Upstream Fallback Timeout
@@ -110,8 +110,8 @@ def get_settings() -> Settings:
         MAX_GRID_CELLS=int(os.getenv("MAX_GRID_CELLS", "400")),
         HORIZON_MIN=int(os.getenv("HORIZON_MIN", "720")),
         SIMULATION_MAX_WORKERS=int(os.getenv("SIMULATION_MAX_WORKERS", "1")),
-        DUCKDB_MEMORY_LIMIT=os.getenv("DUCKDB_MEMORY_LIMIT", "128MB"),
-        DUCKDB_THREADS=int(os.getenv("DUCKDB_THREADS", "2")),
+        DUCKDB_MEMORY_LIMIT=os.getenv("DUCKDB_MEMORY_LIMIT", "64MB"),
+        DUCKDB_THREADS=int(os.getenv("DUCKDB_THREADS", "1")),
         GDAL_CACHEMAX_MB=gdal_cache_mb,
         OVERPASS_TIMEOUT_S=int(os.getenv("OVERPASS_TIMEOUT_S", "10")),
     )

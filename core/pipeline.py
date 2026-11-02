@@ -519,6 +519,8 @@ def run_pipeline(
 
     # ---------------------------------------------------------
     if on_progress: on_progress("Retrieving road infrastructure & settlements (Overture Maps)", 0.82)
+    import gc
+    gc.collect()
     # STAGE 5: Road Graph, Settlements, and Shelters
     # ---------------------------------------------------------
     t0 = time.perf_counter()
